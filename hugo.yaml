@@ -37,7 +37,7 @@ params:
   ShowRssButtonInSectionTermList: true
   UseHugoToc: true
   disableSpecial1stPost: false
-  disableScrollToTop: false
+  disableScrollToTop: true  # see the theme's footer.html
   comments: false
   hidemeta: false
   hideSummary: false
@@ -55,7 +55,7 @@ params:
     safari_pinned_tab: "<link / abs url>"
 
   label:
-    text: "Home"
+    text: ""
     icon: /apple-touch-icon.png
     iconHeight: 35
 
@@ -80,12 +80,21 @@ params:
     Content: Welcome to my blog
 
   socialIcons:
-    - name: x
-      url: "https://x.com/"
-    - name: stackoverflow
-      url: "https://stackoverflow.com"
+    # - name: x
+    #   url: "https://x.com/"
+    # - name: stackoverflow
+    #   url: "https://stackoverflow.com"
+    # - name: github
+    #   url: "https://github.com/"
+    - name: linkedin
+      title: LinkedIn
+      url: https://www.linkedin.com/in/stepanzhuravlev/
     - name: github
-      url: "https://github.com/"
+      title: GitHub
+      url: https://github.com/IntelliJr/
+    - name: hackthebox
+      title: Hack The Box
+      url: https://app.hackthebox.com/profile/1428044/
 
   analytics:
     google:
@@ -116,20 +125,26 @@ params:
     minMatchCharLength: 0
     limit: 10 # refer: https://www.fusejs.io/api/methods.html#search
     keys: ["title", "permalink", "summary", "content"]
-menu:
+
+  footer:
+    hideCopyright: true
+    text: ""  # left blank because this is an insane way of adding content to the footer
+
+Menus:
   main:
-    - identifier: categories
-      name: categories
-      url: /categories/
+    - identifier: about
+      name: About
+      url: '/'
       weight: 10
-    - identifier: tags
-      name: tags
-      url: /tags/
+    - identifier: journey
+      name: Journey
+      url: /journey
       weight: 20
-    - identifier: example
-      name: example.org
-      url: https://example.org
+    - identifier: blog
+      name: Blog
+      url: /blog
       weight: 30
+
 # Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
 pygmentsUseClasses: true
 markup:

@@ -4,10 +4,13 @@
     box-sizing: border-box;
 }
 
+:root {
+    --accent: #ff4f00;
+}
+
 :root[data-theme="dark"] {
     --theme: #151414;
     --primary: #f5f5f5;
-    --accent: #ff4f00;
 }
 
 .navbar a {
@@ -17,7 +20,7 @@
 .navbar a::after {
     content: '';
     position: absolute;
-    height: 3px;
+    height: 2px;
     left: 0;
     bottom: -2px;
     width: 0;
@@ -30,7 +33,7 @@
 }
 
 .toc {
-    margin: 20px;
+    width: 265px;
 }
 
 .toc a {
@@ -40,7 +43,7 @@
 .toc a::after {
     content: '';
     position: absolute;
-    height: 3px;
+    height: 2px;
     left: 0;
     bottom: -2px;
     width: 0;
@@ -52,7 +55,40 @@
     width: 100%;
 }
 
-/* Stupid underline fix! */
+/* Stupid underline fix! Shit CSS alert. */
 .toc a:hover {
     box-shadow: none!important;
+}
+
+.toc>details>div.inner>ul>li::marker {
+    color: var(--accent);
+    content: '| ';
+}
+
+/* Shit CSS? */
+#menu .active {
+    color: var(--accent);
+    border-bottom: none!important;
+    text-decoration: underline 2px;
+    text-underline-offset: 4px;
+}
+
+/* I have no clue what this does, it just makes the animation work */
+#menu>li>a>span {
+    position: relative;
+}
+
+#menu>li>a>span:not(.active)::after {
+    content: '';
+    position: absolute;
+    height: 2px;
+    left: 0;
+    bottom: -2px;
+    width: 0;
+    background: var(--accent);
+    transition: width .25s ease-in-out;
+}
+
+#menu>li>a>span:not(.active):hover:after {
+    width: 100%;
 }
