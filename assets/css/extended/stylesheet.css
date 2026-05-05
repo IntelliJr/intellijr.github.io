@@ -92,3 +92,17 @@
 #menu>li>a>span:not(.active):hover:after {
     width: 100%;
 }
+
+.footer a {
+    color: inherit;
+    border-bottom: none!important;
+}
+
+.footer a:hover {
+    border-bottom: none!important;
+}
+
+hr {
+    width: var(--nav-width);
+    margin-inline: auto;
+}

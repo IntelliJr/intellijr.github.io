@@ -1,0 +1,7 @@
+---
+title: 'My second post'
+date: '2025-11-03'
+summary: 'summary'
+---
+
+Hello again world! Lorem ipsum dolor sit amet consectetur adipisicing elit. Illum, ducimus beatae, suscipit veritatis nemo ad ea hic quia perspiciatis libero aspernatur ipsa harum iste labore, dolore neque rem eligendi dolorum.

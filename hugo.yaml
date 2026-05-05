@@ -1,5 +1,5 @@
 baseURL: https://examplesite.com/
-title: Stepan Zhuravlev
+title: IntelliJr
 theme: ["PaperMod"]
 
 pagination:
@@ -35,7 +35,7 @@ params:
   ShowCodeCopyButtons: false
   ShowWordCount: true
   ShowRssButtonInSectionTermList: true
-  UseHugoToc: true
+  UseHugoToc: false
   disableSpecial1stPost: false
   disableScrollToTop: true  # see the theme's footer.html
   comments: false
@@ -94,7 +94,7 @@ params:
       url: https://github.com/IntelliJr/
     - name: hackthebox
       title: Hack The Box
-      url: https://app.hackthebox.com/profile/1428044/
+      url: https://app.hackthebox.com/public/users/1428044
 
   analytics:
     google:
@@ -132,17 +132,17 @@ params:
 
 Menus:
   main:
-    - identifier: about
-      name: About
+    - identifier: home
+      name: Home
       url: '/'
       weight: 10
-    - identifier: journey
-      name: Journey
-      url: /journey
+    - identifier: posts
+      name: Posts
+      url: /posts
       weight: 20
-    - identifier: blog
-      name: Blog
-      url: /blog
+    - identifier: write-ups
+      name: Write-ups
+      url: /writeups
       weight: 30
 
 # Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
