@@ -2,8 +2,10 @@
 <!-- <section>
     {{ .Content }}
 </section> -->
-<main class="main">
-    {{/* partial "toc.html" . */}}
-    {{ .Content }}
-</main>
+{{/* partial "toc.html" . */}}
+
+<article class="home-info-custom">
+  {{ .Content }}
+</article>
+
 {{ end }}

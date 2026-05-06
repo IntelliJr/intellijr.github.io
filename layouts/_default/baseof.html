@@ -10,8 +10,9 @@
     <!-- {{ partial "navbar.html" . }} -->
     {{ partial "header.html" . }}
     <hr/>
-    {{ block "main" . }}
-
+    <main class="main">
+        {{ block "main" . }}
+    </main>
     {{ end }}
     {{ partial "footer.html" . }}
 </body>

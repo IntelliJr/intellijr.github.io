@@ -9,6 +9,6 @@ I started my computer science journey in 2018 by learning Android application de
 
 I started this blog to share my journey and things that interest me, and, hopefully, provide something of value for others that are on the same (or different) path as me.
 
-I am currently working as an Information Security Specialist.
+I am currently in a GRC & Security Engineering role.
 
 You can find me on the socials at the bottom of the page if you'd like to connect!

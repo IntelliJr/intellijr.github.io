@@ -106,3 +106,8 @@ hr {
     width: var(--nav-width);
     margin-inline: auto;
 }
+
+.home-info-custom p {
+    margin-bottom: var(--content-gap);
+}
+
