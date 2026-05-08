@@ -11,28 +11,21 @@
     </image>
     <generator>Hugo -- 0.152.2</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 05 May 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 08 May 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Starting Out</title>
+      <link>http://localhost:1313/posts/starting-out/</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/posts/starting-out/</guid>
+      <description>How I started my cybersecurity journey &amp;amp; a few tips for those just getting started.</description>
+    </item>
     <item>
       <title>First Write-up</title>
       <link>http://localhost:1313/writeups/first-writeup/</link>
       <pubDate>Tue, 05 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/writeups/first-writeup/</guid>
       <description>test 1</description>
-    </item>
-    <item>
-      <title>My second post</title>
-      <link>http://localhost:1313/posts/my-second-post/</link>
-      <pubDate>Mon, 03 Nov 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/my-second-post/</guid>
-      <description>summary</description>
-    </item>
-    <item>
-      <title>My first post</title>
-      <link>http://localhost:1313/posts/my-first-post/</link>
-      <pubDate>Sun, 02 Nov 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/my-first-post/</guid>
-      <description>summary</description>
     </item>
   </channel>
 </rss>
