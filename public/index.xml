@@ -14,18 +14,18 @@
     <lastBuildDate>Fri, 08 May 2026 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>OSINT 1-3 (UTCTF 2024)</title>
+      <link>http://localhost:1313/writeups/osint-utctf2024/</link>
+      <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/writeups/osint-utctf2024/</guid>
+      <description>3-part OSINT challenge from UTCTF 2024.</description>
+    </item>
+    <item>
       <title>Starting Out</title>
       <link>http://localhost:1313/posts/starting-out/</link>
       <pubDate>Fri, 08 May 2026 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/posts/starting-out/</guid>
       <description>How I started my cybersecurity journey &amp;amp; a few tips for those just getting started.</description>
-    </item>
-    <item>
-      <title>First Write-up</title>
-      <link>http://localhost:1313/writeups/first-writeup/</link>
-      <pubDate>Tue, 05 May 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/writeups/first-writeup/</guid>
-      <description>test 1</description>
     </item>
   </channel>
 </rss>
