@@ -111,4 +111,5 @@ hr {
 
 .home-info-custom p {
     margin-bottom: var(--content-gap);
+    color: var(--content);
 }
