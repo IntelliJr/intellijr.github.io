@@ -1,7 +1,10 @@
 ---
 title: 'Starting Out'
 date: '2026-05-08'
-summary: 'How I started my cybersecurity journey & a few tips for those just getting started.'
+summary: 'My experience of getting into cybersecurity & a few tips for those just getting started.'
+# cover:
+#   image: "TBC"
+#   relative: true
 ---
 
 Welcome to the first post of this website! Here is a track that I took when I was just starting out two years ago that you can take some inspiration from.
@@ -30,7 +33,7 @@ Oh boy, this is where I've done the most of my learning and practice _by far_. H
 Academy is a place for you to learn theory alongside doing practical exercises. The topics are organised in **modules**, which can either cover offensive security, defensive security, or general theory (for example, operating systems, programming languages, networking, etc.). The modules are unlocked using an internal currency called **cubes** (which you will get some amount of at the start), and their cost depends on the module's **Tier** (0-4). Tier 0 modules cost 10 cubes, which you can actually get back by completing all the exercises in a module, essentially making the Tier 0 modules free. The higher the Tier of the module, the higher the cost, and for the modules of Tier 1 and above, you can only get 20% of the cubes back upon completing all the module's exercises. 
 You can either buy cubes via a one-time purchase (10 cubes/USD) or via a subscription (at a better rate). There are also some annual subscriptions which provide you direct access to modules (instead of cubes) as well as some other benefits, but I'd like to pause at one specific plan which was the only reason I considered paying at all -- the Student plan.
 
-![](/img/starting-out/student-plan.png)
+![](student-plan.png)
 
 This plan gives you direct access (no spending cubes required) to all Tier 0-2 modules for 8 USD/month. In my personal opinion, it's a great value for the price. All the content you get access to can keep you busy for quite a while, and it allows you to work towards some job role paths
 >If you manage to complete more than 80 cubes' worth of exercises in a month, you effectively get more than 10 cubes for 1 USD and get to keep all the finished modules (without having paid a single cube for them!).

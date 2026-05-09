@@ -2,6 +2,9 @@
 title: 'OSINT 1-3 (UTCTF 2024)'
 date: '2026-05-08'
 summary: '3-part OSINT challenge from UTCTF 2024.'
+cover:
+    image: "/img/osint-utctf2024/osint-utctf2024-preview.png"
+    relative: false
 ---
 
 # OSINT 1
@@ -55,7 +58,7 @@ The link leads to a Discord server with 3 people in it: `coleminerton`, `rosschi
 
 ![](/img/osint-utctf2024/discord-files.png)
 
-There are a couple pictures, and a document named [`trustly_contract.pdf`](/img/osint-utctf2024/trustly_contract.pdf). Let's check it.
+There are a couple pictures, and a document named `trustly_contract.pdf`. Let's check it.
 
 ![](/img/osint-utctf2024/contract-1.png)
 ![](/img/osint-utctf2024/contract-2.png)
@@ -74,7 +77,7 @@ Do not include any spaces in your submission. The submission is also case sensit
 - All in scope accounts follow the same naming convention. Once you've reached a centralized location any sites you need can be reached in at most 3 clicks.
 ## Methodology
 Since we haven't taken a look at the Mastodon account in the first part, let's do it now.
-## [Mastodon](https://mastodon.social/@coleminerton)
+### [Mastodon](https://mastodon.social/@coleminerton)
 We can find out a few really important things from the posts on this account.
 Firstly, we can confirm the Cole's affiliation to Kakuu Corporation:
 
@@ -121,8 +124,8 @@ Let's go to Google Maps and search for "Cimarron Ave NM".
 
 ![](/img/osint-utctf2024/cimarron-maps.png)
 
-Now, this is where my solution falls short of perfect. By using all the provided hints, it was possible to narrow the list down to a single location, however, I was not able to do that, so I had to try and submit all possible zip codes for Springer, Raton, and Aztec. The correct city turned out to be Raton, which also had only one zip code.
-Flag: `Raton,NM,87740`.
+Now, this is where my solution falls short of perfect. By using all the provided hints, it was possible to narrow the list down to a single location, however, I was not able to do that, so I had to try and submit all possible zip codes for Springer, Raton, and Aztec. The correct city turned out to be Raton, and it only had one possible zip code.
+Flag:`Raton,NM,87740`.
 
 # OSINT 3
 - Solves: 96
