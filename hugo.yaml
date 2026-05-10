@@ -21,7 +21,7 @@ caches:
     dir: :cacheDir/images
 
 params:
-  # env: production  # uncomment to enable google analytics, opengraph, twitter-cards and schema.
+  env: production  # uncomment to enable google analytics, opengraph, twitter-cards and schema.
   title: Title
   description: "Title description"
   keywords: [Blog, Portfolio, PaperMod]
