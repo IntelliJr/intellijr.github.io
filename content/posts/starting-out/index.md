@@ -1,6 +1,6 @@
 ---
 title: 'Starting Out'
-date: '2026-05-08'
+date: '2026-05-10'
 summary: 'My experience of getting into cybersecurity & a few tips for those just getting started.'
 cover:
   image: "starting-out-cover.gif"

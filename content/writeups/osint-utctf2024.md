@@ -1,6 +1,6 @@
 ---
 title: 'OSINT 1-3 (UTCTF 2024)'
-date: '2026-05-08'
+date: '2026-05-10'
 summary: '3-part OSINT challenge from UTCTF 2024.'
 cover:
     image: "/img/osint-utctf2024/osint-utctf2024-cover.png"
