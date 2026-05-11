@@ -47,7 +47,7 @@ You can either buy cubes via a one-time purchase (10 cubes/USD) or via a subscri
 ![](student-plan.png)
 
 This plan gives you direct access (no spending cubes required) to all Tier 0-2 modules for 8 USD/month. In my personal opinion, it's a great value for the price. All the content you get access to can keep you busy for quite a while, and it also allows you to work through some of the HTB's job role paths, such as Junior Cybersecurity Analyst, Penetration Tester, and SOC Analyst, which also give you access to their respective certification exams upon completion.
->If you manage to complete more than 80 cubes' worth of exercises in a month, you effectively get more than 10 cubes for 1 USD and get to keep all the finished modules, without having paid a single cube for them!.
+>If you manage to complete more than 80 cubes' worth of exercises in a month, you effectively get more than 10 cubes for 1 USD and get to keep all the finished modules, without having paid a single cube for them!
 
 One thing to be aware of with Academy is that even though it does teach you, the answers to _some_ questions or the steps needed to reach them won't be given to you directly, and you will have to go an extra mile and do some research on your own in order to find a way to do what you need to. While it can certainly be frustrating, I prefer treating these moments as training for the real-world security, where many answers won't be given to you on a silver platter :)
 
