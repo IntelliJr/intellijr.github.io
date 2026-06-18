@@ -166,7 +166,7 @@
 }
 
 .post-content .highlight:not(table) {
-    margin: 10px auto;
+    margin: 0 auto;
     background: var(--code-block-bg) !important;
     border-radius: var(--radius);
     direction: ltr;
@@ -202,8 +202,8 @@
 }
 
 .post-content code {
-    margin: auto 4px;
-    padding: 4px 6px;
+    margin: auto 1px;
+    padding: 2px 5px;
     font-size: 0.78em;
     line-height: 1.5;
     background: var(--code-bg);
